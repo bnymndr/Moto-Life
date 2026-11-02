@@ -1,0 +1,17 @@
+{
+  "name": "moto-interkom",
+  "version": "1.0.0",
+  "description": "Motosikletliler için WebRTC web interkomu",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "nodemailer": "^6.9.14"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
