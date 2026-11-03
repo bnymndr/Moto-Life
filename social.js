@@ -9,7 +9,9 @@ const express = require('express');
 module.exports = function mountSocial({ app, io, users, userFromCookie, uname, dataDir }) {
   // ---------- Depo (data/social.json, gecikmeli ve atomik yazım) ----------
   const FILE = path.join(dataDir, 'social.json');
-  const db = { posts: [], friends: {}, requests: [], messages: {}, profiles: {} };
+  const db = { posts: [], friends: {}, requests: [], messages: {}, profiles: {}, images: {} };
+  const IMG_DIR = path.join(dataDir, 'social-img');
+  fs.mkdirSync(IMG_DIR, { recursive: true });
   try { Object.assign(db, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch {}
   let timer = null;
   const flush = () => {
@@ -23,7 +25,11 @@ module.exports = function mountSocial({ app, io, users, userFromCookie, uname, d
   ['SIGINT', 'SIGTERM'].forEach(sig => process.on(sig, () => { flush(); process.exit(0); }));   // Ctrl+C ile kapanırken bekleyen kayıt yazılır
 
   // ---------- Yardımcılar ----------
-  const MAX_POSTS = 3000, MAX_MSGS = 500;
+  const MAX_POSTS = 3000, MAX_MSGS = 500, MAX_IMG = 700 * 1024;
+  const MOODS = ['mutlu', 'heyecanli', 'havali', 'huzurlu', 'asik', 'ozgur', 'enerjik', 'eglenceli', 'minnettar', 'yorgun', 'uzgun', 'kizgin'];
+  const mood = v => (MOODS.includes(v) ? v : '');
+  const imgFile = id => path.join(IMG_DIR, id + '.jpg');
+  const dropImage = id => { if (!id) return; delete db.images[id]; fs.unlink(imgFile(id), () => {}); };
   const rid = () => crypto.randomBytes(8).toString('hex');
   const txt = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, n);
   const lower = s => String(s || '').toLocaleLowerCase('tr');
@@ -52,6 +58,10 @@ module.exports = function mountSocial({ app, io, users, userFromCookie, uname, d
     return over;
   };
   setInterval(() => { const now = Date.now(); for (const [k, a] of hits) if (!a.length || now - a[a.length - 1] > 120000) hits.delete(k); }, 60000).unref();
+  setInterval(() => {                                       // 1 saatten eski, gönderiye eklenmemiş yüklemeleri sil
+    const old = Date.now() - 3600000;
+    for (const [id, m] of Object.entries(db.images)) if (!m.post && m.at < old) { dropImage(id); save(); }
+  }, 600000).unref();
   const toUser = (uid, ev, payload) => io.to('u:' + uid).emit(ev, payload);
   const toFriends = (uid, ev, payload) => (db.friends[uid] || []).forEach(f => toUser(f, ev, payload));
 
@@ -61,7 +71,7 @@ module.exports = function mountSocial({ app, io, users, userFromCookie, uname, d
   };
   const profile = u => {
     const p = db.profiles[u.id] || {};
-    return { ...card(u), bio: p.bio || '', status: p.status || '', statusAt: p.statusAt || 0, since: u.createdAt || 0, stats: stats(u.id) };
+    return { ...card(u), bio: p.bio || '', status: p.status || '', mood: p.mood || '', statusAt: p.statusAt || 0, since: u.createdAt || 0, stats: stats(u.id) };
   };
   const relation = (meId, other) => {
     if (isFriend(meId, other.id)) return { rel: 'friend' };
@@ -78,7 +88,7 @@ module.exports = function mountSocial({ app, io, users, userFromCookie, uname, d
   };
   const visibleTo = (viewer, authorId) => viewer === authorId || isFriend(viewer, authorId);
   const postView = (p, viewer) => ({
-    id: p.id, author: cardOf(p.uid), text: p.text, at: p.at, likes: p.likes.length, liked: p.likes.includes(viewer),
+    id: p.id, author: cardOf(p.uid), text: p.text, at: p.at, mood: p.mood || '', image: p.image ? '/api/social/img/' + p.image : '', likes: p.likes.length, liked: p.likes.includes(viewer),
     commentCount: p.comments.length, mine: p.uid === viewer,
     comments: p.comments.slice(-20).map(c => ({ id: c.id, author: cardOf(c.uid), text: c.text, at: c.at }))
   });
@@ -126,12 +136,12 @@ module.exports = function mountSocial({ app, io, users, userFromCookie, uname, d
   r.put('/profile', (req, res) => {
     const p = db.profiles[req.u.id] || (db.profiles[req.u.id] = {}), b = req.body || {};
     if (b.bio !== undefined) p.bio = txt(b.bio, 160);
-    if (b.status !== undefined) {
-      const s = txt(b.status, 80);
-      if (s !== (p.status || '')) { p.status = s; p.statusAt = s ? Date.now() : 0; }
-    }
+    const before = (p.status || '') + '|' + (p.mood || '');
+    if (b.mood !== undefined) p.mood = mood(b.mood);
+    if (b.status !== undefined) p.status = txt(b.status, 80);
+    if (((p.status || '') + '|' + (p.mood || '')) !== before) p.statusAt = (p.status || p.mood) ? Date.now() : 0;   // durum ya da duygu değişince zaman damgası yenilenir
     save();
-    toFriends(req.u.id, 'social:status', { username: uname(req.u), status: p.status || '', statusAt: p.statusAt || 0 });
+    toFriends(req.u.id, 'social:status', { username: uname(req.u), status: p.status || '', mood: p.mood || '', statusAt: p.statusAt || 0 });
     res.json({ me: profile(req.u) });
   });
   r.get('/avatar/:username', (req, res) => {
@@ -153,18 +163,41 @@ module.exports = function mountSocial({ app, io, users, userFromCookie, uname, d
     res.json(page(db.posts.filter(p => p.uid === o.id), req, req.u.id));
   });
 
+  // Fotoğraf: istemci küçültüp JPEG gönderir (image/jpeg gövdesi), sunucu doğrular ve dosyaya yazar
+  r.post('/upload', express.raw({ type: 'image/jpeg', limit: MAX_IMG }), (req, res) => {
+    const b = req.body;
+    if (!Buffer.isBuffer(b) || b.length < 1000 || b[0] !== 0xFF || b[1] !== 0xD8 || b[2] !== 0xFF) return fail(res, 400, 'Geçerli bir JPEG fotoğraf gönder.');
+    if (limited('up:' + req.u.id, 10, 60000)) return fail(res, 429, 'Çok sık fotoğraf yüklüyorsun, biraz bekle.');
+    const id = rid();
+    fs.writeFile(imgFile(id), b, err => {
+      if (err) return fail(res, 500, 'Fotoğraf kaydedilemedi.');
+      db.images[id] = { uid: req.u.id, at: Date.now(), post: null }; save();
+      res.json({ image: id });
+    });
+  });
+  r.get('/img/:id', (req, res) => {
+    const id = req.params.id, rec = /^[0-9a-f]{16}$/.test(id) && db.images[id];
+    const post = rec && rec.post && db.posts.find(x => x.id === rec.post);
+    if (!rec || !(rec.uid === req.u.id || (post && visibleTo(req.u.id, post.uid)))) return res.status(404).end();
+    res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=604800, immutable' });
+    fs.createReadStream(imgFile(id)).on('error', () => res.status(404).end()).pipe(res);
+  });
+
   // Akış
   r.get('/feed', (req, res) => {
     const ok = new Set([req.u.id, ...(db.friends[req.u.id] || [])]);
     res.json(page(db.posts.filter(p => ok.has(p.uid)), req, req.u.id));
   });
   r.post('/posts', (req, res) => {
-    const t = txt((req.body || {}).text, 500);
-    if (!t) return fail(res, 400, 'Gönderi boş olamaz.');
+    const b = req.body || {}, t = txt(b.text, 500), img = String(b.image || '');
+    const rec = img && db.images[img];
+    if (img && (!rec || rec.uid !== req.u.id || rec.post)) return fail(res, 400, 'Fotoğraf bulunamadı, tekrar yükle.');
+    if (!t && !img) return fail(res, 400, 'Gönderi boş olamaz.');
     if (limited('post:' + req.u.id, 8, 60000)) return fail(res, 429, 'Çok sık paylaşım yapıyorsun, biraz bekle.');
-    const p = { id: rid(), uid: req.u.id, text: t, at: Date.now(), likes: [], comments: [] };
+    const p = { id: rid(), uid: req.u.id, text: t, at: Date.now(), likes: [], comments: [], mood: mood(b.mood), image: img };
+    if (rec) rec.post = p.id;
     db.posts.push(p);
-    if (db.posts.length > MAX_POSTS) db.posts.splice(0, db.posts.length - MAX_POSTS);
+    if (db.posts.length > MAX_POSTS) db.posts.splice(0, db.posts.length - MAX_POSTS).forEach(x => dropImage(x.image));
     save();
     toFriends(req.u.id, 'social:post', { id: p.id, username: uname(req.u) });
     res.json({ post: postView(p, req.u.id) });
@@ -177,6 +210,7 @@ module.exports = function mountSocial({ app, io, users, userFromCookie, uname, d
   r.delete('/posts/:id', (req, res) => {
     const i = db.posts.findIndex(x => x.id === req.params.id && x.uid === req.u.id);
     if (i < 0) return fail(res, 404, 'Gönderi bulunamadı.');
+    dropImage(db.posts[i].image);
     db.posts.splice(i, 1); save();
     res.json({ ok: true });
   });
@@ -279,6 +313,9 @@ module.exports = function mountSocial({ app, io, users, userFromCookie, uname, d
     res.json(out);
   });
 
+  r.use((err, req, res, next) => {                           // gövde çok büyük / hatalı istek
+    res.status(err.status || 400).json({ error: err.type === 'entity.too.large' ? 'Fotoğraf çok büyük.' : 'İstek hatalı.' });
+  });
   app.use('/api/social', r);
 
   // ---------- Soket: canlı mesajlaşma, yazıyor göstergesi, çevrimiçi durumu ----------
