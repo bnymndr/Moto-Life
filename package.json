@@ -4,7 +4,8 @@
   "description": "Motosikletliler için WebRTC web interkomu",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build:social": "node build-social.js"
   },
   "dependencies": {
     "express": "^4.19.2",
@@ -13,5 +14,10 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

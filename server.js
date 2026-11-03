@@ -189,15 +189,16 @@ async function sendMail(to, subject, text) {
   await tr.sendMail({ from: MAIL_FROM, to, subject, text });
 }
 
-// --- Güvenlik sorusu: iki sayının toplamı. Soru sunucuda üretilir; jeton imzalı, 10 dk geçerli ve tek kullanımlıktır.
-// Cevap jetonun içinde düz yazılmaz (yalnızca imzanın içine girer). Ek olarak gizli tuzak alanı denetlenir.
-const CAPTCHA_TTL = 10 * 60 * 1000, usedCaptcha = new Map(), captchaAsk = new Map();
+
+// --- Güvenlik doğrulaması: iki sayının toplamı. Soru sunucuda üretilir; jeton imzalı, tek kullanımlık ve süreli.
+// Cevap jetonda düz yazılmaz (yalnızca imzanın içine girer). Tarayıcı soruyu kısa aralıklarla yeniler; sunucu 3 dk tolerans tanır.
+const CAPTCHA_TTL = 3 * 60 * 1000, usedCaptcha = new Map(), captchaAsk = new Map();
 const rnd = n => crypto.randomBytes(1)[0] % n;                 // eski Node sürümlerinde de çalışır
 app.get('/api/captcha', (req, res) => {
   const now = Date.now();
   let r = captchaAsk.get(req.ip); if (!r || r.reset < now) r = { n: 0, reset: now + 60000 };
   captchaAsk.set(req.ip, r);
-  if (++r.n > 40) return res.status(429).json({ error: 'Çok fazla soru istendi. Biraz bekle.' });
+  if (++r.n > 60) return res.status(429).json({ error: 'Çok fazla soru istendi. Biraz bekle.' });
   const a = 2 + rnd(8), b = 2 + rnd(8), id = crypto.randomBytes(8).toString('hex'), exp = now + CAPTCHA_TTL;
   res.json({ a, b, token: [id, exp, sign(['cap', id, exp, a + b].join('|'))].join('.') });
 });
@@ -501,6 +502,9 @@ setInterval(() => {
   }
   if (changed) broadcastRooms();
 }, 60 * 1000);
+
+// Sosyal modül: profil, akış, arkadaşlık, canlı mesajlaşma
+require('./social')({ app, io, users, userFromCookie, uname, dataDir: DATA_DIR });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Moto Interkom çalışıyor: http://localhost:${PORT}`));
