@@ -32,6 +32,59 @@ const hhmm = ts => new Date(ts).toLocaleTimeString('tr-TR', { hour: '2-digit', m
 const sortByLast = list => [...list].sort((a, b) => ((b.last && b.last.at) || 0) - ((a.last && a.last.at) || 0));
 const totalUnread = list => list.reduce((n, x) => n + x.unread, 0);
 
+const MOODS = {
+  mutlu: ['😊', 'Mutlu'], heyecanli: ['🤩', 'Heyecanlı'], havali: ['😎', 'Havalı'], huzurlu: ['😌', 'Huzurlu'],
+  asik: ['😍', 'Aşık'], ozgur: ['🏍️', 'Özgür'], enerjik: ['🔥', 'Enerjik'], eglenceli: ['😂', 'Eğleniyor'],
+  minnettar: ['🙏', 'Minnettar'], yorgun: ['😴', 'Yorgun'], uzgun: ['😔', 'Üzgün'], kizgin: ['😤', 'Kızgın']
+};
+const moodText = k => (MOODS[k] ? MOODS[k][0] + ' ' + MOODS[k][1] : '');
+const EMOJIS = ('😀 😃 😄 😁 😆 😅 😂 🤣 🙂 😉 😊 😇 🥰 😍 🤩 😘 😋 😎 🤗 🤔 😏 😴 🥱 😮 😢 😭 😤 😡 🥳 🤯 👍 👎 👏 🙌 🙏 💪 🤝 ✌️ 👋 ' +
+  '❤️ 🧡 💛 💚 💙 💜 🖤 🔥 ✨ 🎉 💯 ⚡ 🌟 ☀️ 🌧️ 🌈 🏍️ 🛵 🏁 🛣️ ⛽ 🔧 🧰 🪖 🧤 ⛰️ 🌲 🌊 🍕 ☕ 🍔 🍺').split(' ');
+
+// İmleç konumuna metin ekler (emoji seçici için)
+function insertAt(el, value, text, set, max) {
+  const a = el && el.selectionStart != null ? el.selectionStart : value.length;
+  const b = el && el.selectionEnd != null ? el.selectionEnd : a;
+  const next = (value.slice(0, a) + text + value.slice(b)).slice(0, max);
+  set(next);
+  const pos = Math.min(a + text.length, next.length);
+  requestAnimationFrame(() => { if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { /* bazı tarayıcılarda desteklenmez */ } } });
+}
+
+// Fotoğrafı telefonda küçültür: en uzun kenar ≤ 1280 px, JPEG ~380 KB hedefi (net görünür, dosya küçük kalır)
+async function compressImage(file, maxSide = 1280, targetBytes = 380 * 1024) {
+  if (!/^image\//.test(file.type)) throw new Error('Yalnızca fotoğraf seçebilirsin.');
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, no) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => no(new Error('Fotoğraf okunamadı. Başka bir fotoğraf dene.'));
+      i.src = url;
+    });
+    const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);          // saydam PNG'lerde siyah zemin olmasın
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    let q = 0.84, blob = null;
+    for (let n = 0; n < 5; n++) {
+      blob = await new Promise(r => c.toBlob(r, 'image/jpeg', q));
+      if (blob && blob.size <= targetBytes) break;
+      q -= 0.1;
+    }
+    if (!blob || blob.size > 650 * 1024) throw new Error('Fotoğraf çok büyük, daha küçük bir fotoğraf seç.');
+    return { blob, w: c.width, h: c.height };
+  } finally { URL.revokeObjectURL(url); }
+}
+async function uploadPhoto(blob) {
+  const r = await fetch('/api/social/upload', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Fotoğraf yüklenemedi.');
+  return j.image;
+}
+
 // Mesaj listesi: aynı id'li mesajı atla, geçici (cid) mesajı sunucudaki kaydıyla değiştir
 const upsertThread = (t, name, m) => {
   const cur = t[name] || { list: [], more: false, loaded: false };
@@ -65,7 +118,9 @@ const ICONS = {
   x: 'M6 6l12 12M18 6L6 18',
   trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
   chat: 'M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.7-.8L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5z',
-  lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4'
+  lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4',
+  camera: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  smile: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01'
 };
 function Icon({ name, className = 'h-5 w-5', fill = false }) {
   return (
@@ -115,6 +170,45 @@ function ConfirmButton({ onConfirm, confirmLabel = 'Emin Misin?', className = DA
     <button type="button" className={className} onClick={() => { if (armed) { setArmed(false); onConfirm(); } else setArmed(true); }}>
       {armed ? confirmLabel : children}
     </button>
+  );
+}
+
+function EmojiPanel({ onPick }) {
+  return (
+    <div className={cx(CARD, 'grid max-h-40 grid-cols-8 gap-0.5 overflow-y-auto p-2')} aria-label="Emoji Seç">
+      {EMOJIS.map(e => (
+        <button key={e} type="button" onMouseDown={ev => ev.preventDefault()} onClick={() => onPick(e)}
+                className="rounded-lg py-1 text-2xl leading-none hover:bg-slate-100 dark:hover:bg-white/10">{e}</button>
+      ))}
+    </div>
+  );
+}
+
+function MoodChips({ value, onChange }) {
+  return (
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Duygu Durumu">
+      {Object.entries(MOODS).map(([k, [emoji, label]]) => (
+        <button key={k} type="button" aria-pressed={value === k} onClick={() => onChange(value === k ? '' : k)}
+                className={cx('rounded-full px-3 py-1.5 text-sm font-medium transition',
+                              value === k ? 'bg-amber-400 text-[#031420]' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-[#F4EFE6] dark:hover:bg-white/15')}>
+          {emoji} {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Lightbox({ src, onClose }) {
+  useEffect(() => {
+    const fn = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, [onClose]);
+  return (
+    <div role="dialog" aria-label="Fotoğraf" onClick={onClose} className="fixed inset-0 z-[80] flex items-center justify-center bg-black/90 p-3">
+      <img src={src} alt="" className="max-h-full max-w-full object-contain" />
+      <button type="button" aria-label="Kapat" onClick={onClose} className="absolute right-3 top-3 rounded-full bg-white/15 p-2 text-white"><Icon name="x" /></button>
+    </div>
   );
 }
 
@@ -188,29 +282,69 @@ function usePosts(path, enabled = true) {
 
 function Composer({ self, onPost }) {
   const [text, setText] = useState('');
+  const [photo, setPhoto] = useState(null);                    // { blob, url }
+  const [mood, setMood] = useState('');
+  const [panel, setPanel] = useState('');                      // '' | 'emoji' | 'mood'
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const submit = async e => {
-    e.preventDefault();
-    const t = text.trim();
-    if (!t || busy) return;
+  const area = useRef(null);
+  const file = useRef(null);
+  useEffect(() => () => { if (photo) URL.revokeObjectURL(photo.url); }, [photo]);
+
+  const choose = async e => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
     setBusy(true); setErr('');
-    try { const j = await api('/posts', { method: 'POST', body: { text: t } }); setText(''); onPost(j.post); }
+    try { const { blob } = await compressImage(f); setPhoto({ blob, url: URL.createObjectURL(blob) }); }
     catch (x) { setErr(x.message); }
     setBusy(false);
   };
+  const submit = async e => {
+    e.preventDefault();
+    const t = text.trim();
+    if ((!t && !photo) || busy) return;
+    setBusy(true); setErr('');
+    try {
+      const image = photo ? await uploadPhoto(photo.blob) : '';
+      const j = await api('/posts', { method: 'POST', body: { text: t, image, mood } });
+      setText(''); setPhoto(null); setMood(''); setPanel(''); onPost(j.post);
+    } catch (x) { setErr(x.message); }
+    setBusy(false);
+  };
+  const tool = on => cx(GHOST, '!px-3 !py-1.5', on && '!bg-amber-400/25');
+
   return (
-    <form onSubmit={submit} className={cx(CARD, 'p-3')}>
+    <form onSubmit={submit} className={cx(CARD, 'space-y-2 p-3')}>
       <div className="flex gap-3">
         <Avatar user={self} size={40} />
-        <textarea value={text} onChange={e => setText(e.target.value.slice(0, 500))} rows={2} placeholder="Neler Oluyor? Yoldan Bir Şeyler Paylaş…"
-                  className={cx(FIELD, 'resize-none')} />
+        <textarea ref={area} value={text} onChange={e => setText(e.target.value.slice(0, 500))} rows={2}
+                  placeholder="Neler Oluyor? Yoldan Bir Şeyler Paylaş…" className={cx(FIELD, 'resize-none')} />
       </div>
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span className={cx('text-xs', text.length > 450 ? 'text-rose-500' : MUTED)}>{text.length}/500</span>
-        <button type="submit" disabled={busy || !text.trim()} className={PRIMARY}><Icon name="send" className="h-4 w-4" />Paylaş</button>
+      {photo && (
+        <div className="relative inline-block">
+          <img src={photo.url} alt="Seçilen fotoğraf" className="max-h-48 rounded-xl object-cover" />
+          <button type="button" aria-label="Fotoğrafı Kaldır" onClick={() => setPhoto(null)}
+                  className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1.5 text-white"><Icon name="x" className="h-4 w-4" /></button>
+        </div>
+      )}
+      {mood && (
+        <p className="inline-flex items-center gap-2 rounded-full bg-amber-400/15 px-3 py-1 text-sm text-amber-700 dark:text-amber-300">
+          {moodText(mood)}
+          <button type="button" aria-label="Duygu Durumunu Kaldır" onClick={() => setMood('')}><Icon name="x" className="h-3.5 w-3.5" /></button>
+        </p>
+      )}
+      {panel === 'emoji' && <EmojiPanel onPick={em => insertAt(area.current, text, em, setText, 500)} />}
+      {panel === 'mood' && <MoodChips value={mood} onChange={m => { setMood(m); setPanel(''); }} />}
+      <div className="flex items-center gap-2">
+        <input ref={file} type="file" accept="image/*" className="hidden" onChange={choose} />
+        <button type="button" disabled={busy} className={tool(!!photo)} aria-label="Fotoğraf Ekle" onClick={() => file.current && file.current.click()}><Icon name="camera" className="h-5 w-5" /></button>
+        <button type="button" className={tool(panel === 'mood' || !!mood)} aria-label="Duygu Durumu Ekle" onClick={() => setPanel(p => (p === 'mood' ? '' : 'mood'))}><Icon name="smile" className="h-5 w-5" /></button>
+        <button type="button" className={tool(panel === 'emoji')} aria-label="Emoji Ekle" onClick={() => setPanel(p => (p === 'emoji' ? '' : 'emoji'))}><span className="text-lg leading-none">😀</span></button>
+        <span className={cx('ml-auto text-xs', text.length > 450 ? 'text-rose-500' : MUTED)}>{text.length}/500</span>
+        <button type="submit" disabled={busy || (!text.trim() && !photo)} className={PRIMARY}><Icon name="send" className="h-4 w-4" />{busy ? 'Gönderiliyor…' : 'Paylaş'}</button>
       </div>
-      {err && <p className="mt-2 text-sm text-rose-500">{err}</p>}
+      {err && <p className="text-sm text-rose-500">{err}</p>}
     </form>
   );
 }
@@ -220,6 +354,7 @@ function PostCard({ post, feed, onOpenUser }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [zoom, setZoom] = useState(false);
   const send = async e => {
     e.preventDefault();
     const t = text.trim();
@@ -236,6 +371,7 @@ function PostCard({ post, feed, onOpenUser }) {
           <span className="min-w-0">
             <span className="block truncate font-semibold">{post.author.name}</span>
             <span className={cx('block truncate text-xs', MUTED)}>@{post.author.username} · {ago(post.at)}</span>
+            {post.mood && <span className="mt-0.5 block truncate text-xs font-medium text-amber-700 dark:text-amber-300">{moodText(post.mood)}</span>}
           </span>
         </button>
         {post.mine && (
@@ -244,7 +380,13 @@ function PostCard({ post, feed, onOpenUser }) {
           </ConfirmButton>
         )}
       </header>
-      <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-relaxed">{post.text}</p>
+      {post.text && <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-relaxed">{post.text}</p>}
+      {post.image && (
+        <button type="button" onClick={() => setZoom(true)} aria-label="Fotoğrafı Büyüt" className="mt-3 block w-full overflow-hidden rounded-xl bg-slate-100 dark:bg-white/[.06]">
+          <img src={post.image} alt="Gönderi fotoğrafı" loading="lazy" decoding="async" className="max-h-[26rem] w-full object-cover" />
+        </button>
+      )}
+      {zoom && <Lightbox src={post.image} onClose={() => setZoom(false)} />}
       <footer className="mt-3 flex items-center gap-5 text-sm">
         <button type="button" onClick={() => feed.like(post.id)} aria-pressed={post.liked}
                 className={cx('inline-flex items-center gap-1.5 font-medium transition', post.liked ? 'text-rose-500' : MUTED)}>
@@ -299,10 +441,7 @@ function FriendActions({ rel, requestId, username, onDone, onChat }) {
   if (rel === 'self') return null;
   if (rel === 'friend') {
     return (
-      <>
-        <button type="button" className={PRIMARY} onClick={() => onChat(username)}><Icon name="chat" className="h-4 w-4" />Mesaj Gönder</button>
-        <ConfirmButton className={DANGER} confirmLabel="Emin Misin?" onConfirm={() => act(() => api('/friends/' + encodeURIComponent(username), { method: 'DELETE' }))}>Arkadaşlıktan Çıkar</ConfirmButton>
-      </>
+      <button type="button" className={PRIMARY} onClick={() => onChat(username)}><Icon name="chat" className="h-4 w-4" />Mesaj Gönder</button>
     );
   }
   if (rel === 'incoming') {
@@ -342,21 +481,23 @@ function EditProfile({ profile, onSaved, toast }) {
 
 function StatusBox({ profile, onSaved, toast }) {
   const [status, setStatus] = useState(profile.status || '');
+  const [mood, setMood] = useState(profile.mood || '');
   const [busy, setBusy] = useState(false);
   const save = async e => {
     e.preventDefault();
     setBusy(true);
-    try { await api('/profile', { method: 'PUT', body: { status } }); toast(status.trim() ? 'Durum Güncellendi' : 'Durum Temizlendi'); onSaved(); }
+    try { await api('/profile', { method: 'PUT', body: { status, mood } }); toast(status.trim() || mood ? 'Durum Güncellendi' : 'Durum Temizlendi'); onSaved(); }
     catch (x) { toast(x.message); }
     setBusy(false);
   };
   return (
-    <form onSubmit={save} className={cx(CARD, 'p-3')}>
-      <label className={cx('mb-1.5 block text-xs font-semibold uppercase tracking-wide', MUTED)}>Durum</label>
+    <form onSubmit={save} className={cx(CARD, 'space-y-2 p-3')}>
+      <label className={cx('block text-xs font-semibold uppercase tracking-wide', MUTED)}>Durum ve Duygu Durumu</label>
       <div className="flex gap-2">
         <input value={status} onChange={e => setStatus(e.target.value.slice(0, 80))} placeholder="Şu An Ne Yapıyorsun? (ör. Sahile Sürüş)" className={FIELD} />
         <button type="submit" disabled={busy} className={PRIMARY}>Güncelle</button>
       </div>
+      <MoodChips value={mood} onChange={setMood} />
     </form>
   );
 }
@@ -395,9 +536,11 @@ function ProfileView({ username, self, version, onOpenUser, onChat, onRefresh, o
           <h2 className="mt-2 truncate text-xl font-bold">{p.name}</h2>
           <p className={cx('truncate text-sm', MUTED)}>@{p.username}{p.bike ? ' · ' + p.bike : ''}</p>
           {p.bio && !editing && <p className="mt-2 whitespace-pre-wrap break-words text-[15px]">{p.bio}</p>}
-          {p.status && !editing && (
+          {(p.status || p.mood) && !editing && (
             <p className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full bg-amber-400/15 px-3 py-1 text-sm text-amber-700 dark:text-amber-300">
-              <span className="truncate">{p.status}</span><span className="shrink-0 text-xs opacity-70">{ago(p.statusAt)}</span>
+              {p.mood && <span className="shrink-0">{moodText(p.mood)}</span>}
+              {p.status && <span className="truncate">{p.status}</span>}
+              <span className="shrink-0 text-xs opacity-70">{ago(p.statusAt)}</span>
             </p>
           )}
           {editing && <EditProfile profile={p} toast={toast} onSaved={() => { setEditing(false); onDone(); }} />}
@@ -493,7 +636,7 @@ function FriendsView({ data, version, onOpenUser, onChat, onRefresh, toast }) {
                          onClick={() => onOpenUser(f.username)} right={
                   <>
                     <button type="button" className={PRIMARY} aria-label="Mesaj Gönder" onClick={() => onChat(f.username)}><Icon name="chat" className="h-4 w-4" /></button>
-                    <ConfirmButton className={cx(DANGER, '!px-2.5')} confirmLabel="Çıkar?" onConfirm={act(() => api('/friends/' + encodeURIComponent(f.username), { method: 'DELETE' }))}><Icon name="x" className="h-4 w-4" /></ConfirmButton>
+                    <ConfirmButton className={cx(DANGER, '!px-3')} confirmLabel="Emin Misin?" onConfirm={act(() => api('/friends/' + encodeURIComponent(f.username), { method: 'DELETE' }))}>Çıkar</ConfirmButton>
                   </>
                 } />
               ))}
@@ -507,7 +650,9 @@ function FriendsView({ data, version, onOpenUser, onChat, onRefresh, toast }) {
 /* ---------- Canlı sohbet: solda arkadaş listesi, sağda mesajlaşma ---------- */
 function Thread({ friend, state, typing, self, onBack, onSend, onTyping, onOlder, onOpenUser }) {
   const [text, setText] = useState('');
+  const [emoji, setEmoji] = useState(false);
   const box = useRef(null);
+  const field = useRef(null);
   const list = state ? state.list : [];
   useEffect(() => { if (box.current) box.current.scrollTop = box.current.scrollHeight; }, [list.length, friend.username, typing]);
   const submit = e => {
@@ -515,7 +660,7 @@ function Thread({ friend, state, typing, self, onBack, onSend, onTyping, onOlder
     const t = text.trim();
     if (!t) return;
     onSend(friend.username, t);
-    setText('');
+    setText(''); setEmoji(false);
   };
   return (
     <>
@@ -549,8 +694,11 @@ function Thread({ friend, state, typing, self, onBack, onSend, onTyping, onOlder
           );
         })}
       </div>
+      {emoji && <div className="border-t border-slate-200 p-2 dark:border-white/10"><EmojiPanel onPick={em => { insertAt(field.current, text, em, setText, 1000); onTyping(friend.username); }} /></div>}
       <form onSubmit={submit} className="flex gap-2 border-t border-slate-200 p-3 dark:border-white/10">
-        <input value={text} onChange={e => { setText(e.target.value.slice(0, 1000)); onTyping(friend.username); }} placeholder="Mesaj Yaz…" className={FIELD} autoComplete="off" />
+        <button type="button" onClick={() => setEmoji(v => !v)} aria-label="Emoji Ekle" aria-pressed={emoji}
+                className={cx(GHOST, '!px-3', emoji && '!bg-amber-400/25')}><span className="text-lg leading-none">😀</span></button>
+        <input ref={field} value={text} onChange={e => { setText(e.target.value.slice(0, 1000)); onTyping(friend.username); }} placeholder="Mesaj Yaz…" className={FIELD} autoComplete="off" />
         <button type="submit" disabled={!text.trim()} className={PRIMARY} aria-label="Gönder"><Icon name="send" className="h-4 w-4" /></button>
       </form>
     </>
