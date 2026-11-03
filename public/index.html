@@ -79,7 +79,7 @@ tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
 <main id="auth" class="hidden mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center gap-5 p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
   <div>
     <h1 class="road text-6xl font-bold leading-[0.9] sm:text-7xl">Moto <span class="text-amber-400">Life</span></h1>
-    <p class="road mt-2 text-xl tracking-wide text-zinc-400">İnterkom &amp; Müzik</p>
+    <p class="road mt-2 text-xl tracking-wide text-zinc-400">İnterkom ve Grup Sürüşü</p>
   </div>
   <section id="quickLogin" class="hidden flex flex-col items-center gap-4">
     <div id="qAvatar" class="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-amber-400 road text-5xl font-bold text-ink"></div>
@@ -189,7 +189,7 @@ tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
 </main>
 
 <!-- Profil paneli -->
-<main id="dash" class="hidden mx-auto grid h-[100dvh] max-w-md grid-rows-[auto_auto_minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+.75rem)]">
+<main id="dash" class="hidden mx-auto grid h-[100dvh] max-w-md grid-rows-[auto_auto_minmax(0,1.35fr)_minmax(0,1fr)] gap-3 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+.75rem)]">
 
   <!-- 0. Üst kuşak: ayarlar | tarih - saat | çıkış -->
   <header class="relative overflow-hidden rounded-2xl" style="background:linear-gradient(90deg,rgba(234,134,33,.30) 0%,#073049 38%,#052437 70%,#031a29 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)">
@@ -257,22 +257,13 @@ tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
     <h2 class="road text-lg font-semibold tracking-wide text-zinc-300">Günün Sürüş Notları</h2>
     <ul id="tips" class="space-y-1.5"></ul>
   </section>
-
-  <!-- 4. Gruplarım -->
-  <section class="card flex flex-col gap-2">
-    <div class="flex items-center justify-between gap-2">
-      <h2 class="road text-lg font-semibold tracking-wide text-zinc-300">Gruplarım</h2>
-      <button id="toGroups" class="btn-sm btn-accent" type="button">Gruplara Git →</button>
-    </div>
-    <ul id="myGroups" class="min-h-0 flex-1 space-y-1.5 overflow-y-auto"></ul>
-  </section>
 </main>
 
 <!-- Katılma ekranı -->
 <main id="join" class="hidden max-w-md mx-auto min-h-[100dvh] flex flex-col gap-4 p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+1.5rem)]">
   <div>
     <h1 class="road text-5xl font-bold leading-[0.9]">Moto <span class="text-amber-400">Life</span></h1>
-    <p class="road mt-2 text-xl tracking-wide text-zinc-400">İnterkom &amp; Müzik</p>
+    <p class="road mt-2 text-xl tracking-wide text-zinc-400">İnterkom ve Grup Sürüşü</p>
   </div>
   <p class="text-zinc-400">Açık bir gruba şifreyle katıl ya da kendi grubunu oluştur. Hoparlör yerine kulaklık kullanmanı öneririz.</p>
 
@@ -484,9 +475,9 @@ tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
       <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>
       <span class="text-center text-[10px] leading-tight">Ana Sayfa</span>
     </button>
-    <button type="button" data-nav="comm" aria-label="İnterkom ve Müzik" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
+    <button type="button" data-nav="comm" aria-label="İnterkom ve Grup Sürüşü" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
       <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-comm"/></svg>
-      <span class="text-center text-[10px] leading-tight">İnterkom ve Müzik</span>
+      <span class="text-center text-[10px] leading-tight">İnterkom ve Grup Sürüşü</span>
     </button>
     <button type="button" data-nav="motor" aria-label="My Motor" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
       <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-moto"/></svg>
@@ -1679,30 +1670,6 @@ $('wxUseGeo').onclick = () => { try { localStorage.removeItem('wxloc'); } catch 
 $('wxLocBtn').onclick = () => { try { localStorage.removeItem('wxloc'); } catch {} loadWeather(true); };   // konumu yeniden al
 $('wxRefreshBtn').onclick = () => loadWeather();                                                          // aynı konumda havayı yenile
 
-// --- Gruplarım ---
-function renderGroups() {
-  const ul = $('myGroups');
-  ul.innerHTML = '';
-  // Yalnızca şu an açık olan gruplar gösterilir; kapanan grup listeden kendiliğinden düşer (geçmiş tutulmaz)
-  const list = ((me && me.groups) || []).filter(g => lastRooms.some(r => r.key === g.key));
-  if (!list.length) {
-    ul.innerHTML = '<li class="text-sm text-zinc-500">Şu an aktif bir grubun yok. Gruplara göz atabilir ya da yeni bir grup oluşturabilirsin.</li>';
-    return;
-  }
-  list.forEach(g => {
-    const live = lastRooms.find(r => r.key === g.key);
-    const li = document.createElement('li'), b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'flex w-full items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2 text-left';
-    b.innerHTML = '<span class="min-w-0 flex-1 truncate text-sm font-medium"></span><span class="shrink-0 text-xs"></span>';
-    b.children[0].textContent = g.name;
-    b.children[1].textContent = live.count >= live.max ? 'Dolu' : 'Aktif · ' + live.count + ' Kişi';
-    b.children[1].className += ' text-amber-300';
-    b.onclick = () => { if (inRoom) return goTab('comm'); showScreen('join'); selectRoom(live); };
-    li.appendChild(b); ul.appendChild(li);
-  });
-}
-
 // Üst kuşak: tarih - saat (saniye saniye işler)
 function tickClock() {
   const d = new Date();
@@ -1713,7 +1680,7 @@ $('dashSettings').onclick = () => goTab('settings');
 let dashTimers = [];
 function startDash() {
   stopDash();
-  tickClock(); renderProfile(); renderTips(); renderGroups(); loadWeather();
+  tickClock(); renderProfile(); renderTips(); loadWeather();
   dashTimers = [setInterval(() => { renderProfile(); renderTips(); }, 60000), setInterval(loadWeather, 300000), setInterval(tickClock, 1000)];
 }
 function stopDash() { dashTimers.forEach(clearInterval); dashTimers = []; }
@@ -1723,7 +1690,6 @@ function goTab(t) {
   showScreen({ home: 'dash', motor: 'motor', world: 'world', friends: 'friends', social: 'social', settings: 'settings' }[t]);
 }
 document.querySelectorAll('[data-nav]').forEach(b => { b.onclick = () => goTab(b.dataset.nav); });
-$('toGroups').onclick = () => goTab('comm');
 // Klavye açıkken alt çubuk gizlenir (yer kaplamasın)
 document.addEventListener('focusin', e => {
   if (e.target.matches('input:not([type=range]):not([type=checkbox]),textarea,select')) $('bottomNav').classList.add('kb');
@@ -1807,7 +1773,7 @@ function renderRooms(list) {
     li.appendChild(b); ul.appendChild(li);
   });
 }
-socket.on('rooms', list => { lastRooms = list; renderRooms(list); renderGroups(); });
+socket.on('rooms', list => { lastRooms = list; renderRooms(list); });
 
 // event: 'create' (yeni grup) ya da 'join' (var olan gruba şifreyle)
 async function enter(event, payload, errId) {
