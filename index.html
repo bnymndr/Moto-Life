@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#031420">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Moto Life">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Moto Life</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
+  amber: { 300: '#F2A64E', 400: '#EA8621', 500: '#D4731A' },
+  zinc: { 200: '#E6E1D8', 300: '#C9D0D6', 400: '#93A4B2', 500: '#667A8A', 600: '#44586A', 700: '#2A3B4B', 800: '#1B2B3A' },
+  surface: 'rgba(255,255,255,0.055)',
+  ink: '#031420'
+} } } };
+</script>
+<style>
+  :root{--accent:#EA8621;--accent-2:#F2A64E;--ink:#031420;--cream:#F4EFE6;--nav:calc(62px + env(safe-area-inset-bottom))}
+  html{-webkit-text-size-adjust:100%;color-scheme:dark;background:#031420}
+  body{font-family:'Barlow',system-ui,sans-serif;color:var(--cream);overflow-x:hidden;overscroll-behavior:none;
+    background:radial-gradient(90% 38% at 50% 108%,rgba(234,134,33,.20),transparent 70%),
+               radial-gradient(130% 70% at 50% -10%,#0b3550 0%,#052437 48%,#031420 100%)}
+  .road{font-family:'Barlow Condensed','Arial Narrow',sans-serif}
+  button,input,select{touch-action:manipulation}
+  button{transition:background-color .15s,transform .08s,opacity .15s}
+  button:active:not(:disabled){transform:scale(.985)}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+  .bg-surface{box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+  .field{width:100%;border-radius:.75rem;background:rgba(255,255,255,.055);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);padding:.85rem 1rem;font-size:16px;color:var(--cream);outline:none}
+  .field::placeholder{color:#667A8A}
+  .field:focus{box-shadow:inset 0 0 0 1.5px var(--accent)}
+  select.field option{background:#052437;color:#F4EFE6}
+  .btn{width:100%;border-radius:.75rem;background:var(--accent);color:var(--ink);font-weight:600;font-size:1.05rem;padding:.9rem 1rem}
+  .btn:active{background:var(--accent-2)}
+  .link{color:var(--accent-2);font-size:.95rem;padding:.4rem}
+  .btn-sec{width:100%;border-radius:.75rem;background:rgba(255,255,255,.07);color:var(--cream);font-weight:500;font-size:1rem;padding:.85rem 1rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+  .btn-sec:active{background:rgba(255,255,255,.12)}
+  .btn-sm{border-radius:.625rem;background:rgba(255,255,255,.07);color:var(--cream);font-weight:500;font-size:.875rem;line-height:1.25rem;padding:.45rem .75rem;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+  .btn-accent{background:var(--accent);color:var(--ink);font-weight:600;box-shadow:none}
+  /* Konuşan satır: pastel yeşil, hoparlörü kapalı satır: pastel kırmızı (turuncu düğmeler gibi düz renk, koyu yazı) */
+  .row-on{background:#5CC48E;color:var(--ink)}
+  .row-off{background:#E8675D;color:var(--ink)}
+  .row-on [data-sub],.row-off [data-sub]{color:rgba(3,20,32,.78)}
+  .row-on [data-kind],.row-off [data-kind]{color:var(--ink)}
+  .row-on button[data-kind],.row-off button[data-kind]{background:rgba(3,20,32,.14)}
+  #bottomNav.kb{display:none}
+  summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-weight:500;padding:.35rem 0}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:'▾';color:#93A4B2;transition:transform .15s}
+  details[open] > summary::after{transform:rotate(180deg)}
+  .card{border-radius:1rem;background:rgba(255,255,255,.055);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);padding:.7rem .85rem;min-height:0;overflow:hidden}
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Açılış ekranı (5 sn) -->
+<div id="splash" class="fixed inset-0 z-[60] bg-ink transition-opacity duration-500">
+  <img src="/splash.jpg" alt="Moto Life – Birlikte Sür, Bağlı Kal." class="h-full w-full object-cover md:object-contain">
+</div>
+<script>
+(function () {
+  const splash = document.getElementById('splash'), img = splash.querySelector('img');
+  const done = () => { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 500); };
+  const start = () => setTimeout(done, 5000);           // görsel görününce 5 saniye say
+  if (img.complete) { img.naturalWidth ? start() : done(); }
+  else { img.onload = start; img.onerror = done; }
+})();
+</script>
+
+<!-- Giriş / kayıt ekranı -->
+<main id="auth" class="hidden mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center gap-5 p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+  <div>
+    <h1 class="road text-6xl font-bold leading-[0.9] sm:text-7xl">Moto <span class="text-amber-400">Life</span></h1>
+    <p class="road mt-2 text-xl tracking-wide text-zinc-400">İnterkom &amp; Müzik</p>
+  </div>
+  <section id="quickLogin" class="hidden flex flex-col items-center gap-4">
+    <div id="qAvatar" class="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-amber-400 road text-5xl font-bold text-ink"></div>
+    <div class="text-center">
+      <p id="qName" class="road text-3xl font-bold leading-none"></p>
+      <p id="qUser" class="mt-1 text-sm text-zinc-400"></p>
+    </div>
+    <form id="quickForm" class="flex w-full flex-col gap-3">
+      <input id="qPw" class="field" type="password" autocomplete="current-password" placeholder="Şifre" required>
+      <div data-cap class="relative space-y-1.5">
+        <div class="flex items-center justify-between text-xs text-zinc-400"><span>Güvenlik Doğrulaması</span><span data-timer>…</span></div>
+        <div class="flex items-center gap-2">
+          <div data-card class="flex h-[3.4rem] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-white/[.055] px-2 road text-2xl font-semibold" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)">
+            <span data-q class="whitespace-nowrap">…</span>
+            <input data-ans class="h-10 w-24 rounded-lg bg-white/10 px-1 text-center text-xl text-[inherit] outline-none placeholder:text-sm placeholder:font-normal focus:ring-2 focus:ring-amber-400" type="text" name="captcha-answer" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="Toplam" aria-label="Toplam" required>
+            <svg data-ok class="hidden h-6 w-6 shrink-0" style="color:#5CC48E" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          </div>
+          <button data-ref type="button" aria-label="Soruyu Yenile" class="flex h-[3.4rem] w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-amber-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button>
+        </div>
+        <div class="h-1 overflow-hidden rounded-full bg-white/10"><div data-bar class="h-full w-full bg-amber-400"></div></div>
+        <p data-err class="hidden text-xs leading-snug text-red-300"></p>
+        <input data-hp type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+      </div>
+      <button class="btn" type="submit">Giriş Yap</button>
+      <button id="qForgot" class="link self-center" type="button">Şifremi Unuttum</button>
+    </form>
+    <button id="qOther" class="btn-sec" type="button">Farklı Bir Oturum Aç</button>
+  </section>
+  <div id="authTabs" class="grid grid-cols-2 gap-1 rounded-xl bg-surface p-1">
+    <button id="tabLogin" type="button">Giriş Yap</button>
+    <button id="tabRegister" type="button">Kayıt Ol</button>
+  </div>
+
+  <form id="loginForm" class="flex flex-col gap-3">
+    <input id="lLogin" class="field" autocomplete="username" autocapitalize="none" placeholder="Kullanıcı Adı veya E-posta" required>
+    <input id="lPw" class="field" type="password" autocomplete="current-password" placeholder="Şifre" required>
+    <div data-cap class="relative space-y-1.5">
+      <div class="flex items-center justify-between text-xs text-zinc-400"><span>Güvenlik Doğrulaması</span><span data-timer>…</span></div>
+      <div class="flex items-center gap-2">
+        <div data-card class="flex h-[3.4rem] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-white/[.055] px-2 road text-2xl font-semibold" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)">
+          <span data-q class="whitespace-nowrap">…</span>
+          <input data-ans class="h-10 w-24 rounded-lg bg-white/10 px-1 text-center text-xl text-[inherit] outline-none placeholder:text-sm placeholder:font-normal focus:ring-2 focus:ring-amber-400" type="text" name="captcha-answer" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="Toplam" aria-label="Toplam" required>
+          <svg data-ok class="hidden h-6 w-6 shrink-0" style="color:#5CC48E" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        </div>
+        <button data-ref type="button" aria-label="Soruyu Yenile" class="flex h-[3.4rem] w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-amber-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button>
+      </div>
+      <div class="h-1 overflow-hidden rounded-full bg-white/10"><div data-bar class="h-full w-full bg-amber-400"></div></div>
+      <p data-err class="hidden text-xs leading-snug text-red-300"></p>
+      <input data-hp type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+    </div>
+    <button class="btn" type="submit">Giriş Yap</button>
+    <button id="toForgot" class="link self-center" type="button">Şifremi Unuttum</button>
+  </form>
+
+  <form id="registerForm" class="hidden flex flex-col gap-3">
+    <input id="rUser" class="field" autocomplete="username" autocapitalize="none" maxlength="20" placeholder="Kullanıcı Adı" required>
+    <div class="grid grid-cols-2 gap-3">
+      <input id="rFirst" class="field" autocomplete="given-name" maxlength="40" placeholder="İsim" required>
+      <input id="rLast" class="field" autocomplete="family-name" maxlength="40" placeholder="Soyisim" required>
+    </div>
+    <select id="rGender" class="field" aria-label="Cinsiyet">
+      <option value="erkek">Erkek</option>
+      <option value="kadin">Kadın</option>
+      <option value="belirtmek-istemiyorum" selected>Belirtmek İstemiyorum</option>
+    </select>
+    <div class="grid grid-cols-2 gap-3">
+      <input id="rBrand" class="field" list="brands" maxlength="40" placeholder="Motosiklet Markası" required>
+      <input id="rModel" class="field" maxlength="40" placeholder="Model" required>
+    </div>
+    <input id="rEmail" class="field" type="email" autocomplete="email" placeholder="E-posta" required>
+    <input id="rPw" class="field" type="password" autocomplete="new-password" placeholder="Şifre (en az 6 karakter)" required>
+    <div data-cap class="relative space-y-1.5">
+      <div class="flex items-center justify-between text-xs text-zinc-400"><span>Güvenlik Doğrulaması</span><span data-timer>…</span></div>
+      <div class="flex items-center gap-2">
+        <div data-card class="flex h-[3.4rem] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-white/[.055] px-2 road text-2xl font-semibold" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)">
+          <span data-q class="whitespace-nowrap">…</span>
+          <input data-ans class="h-10 w-24 rounded-lg bg-white/10 px-1 text-center text-xl text-[inherit] outline-none placeholder:text-sm placeholder:font-normal focus:ring-2 focus:ring-amber-400" type="text" name="captcha-answer" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="Toplam" aria-label="Toplam" required>
+          <svg data-ok class="hidden h-6 w-6 shrink-0" style="color:#5CC48E" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        </div>
+        <button data-ref type="button" aria-label="Soruyu Yenile" class="flex h-[3.4rem] w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-amber-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button>
+      </div>
+      <div class="h-1 overflow-hidden rounded-full bg-white/10"><div data-bar class="h-full w-full bg-amber-400"></div></div>
+      <p data-err class="hidden text-xs leading-snug text-red-300"></p>
+      <input data-hp type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+    </div>
+    <button class="btn" type="submit">Kayıt Ol</button>
+  </form>
+
+  <form id="forgotForm" class="hidden flex flex-col gap-3">
+    <h2 class="road text-2xl font-semibold">Şifremi Unuttum</h2>
+    <p class="text-sm text-zinc-400">Hesabındaki e-posta adresini yaz, sana şifre sıfırlama bağlantısı gönderelim.</p>
+    <input id="fEmail" class="field" type="email" autocomplete="email" placeholder="E-posta" required>
+    <button class="btn" type="submit">Bağlantı Gönder</button>
+    <button class="link self-center" type="button" data-back>← Girişe Dön</button>
+  </form>
+
+  <form id="resetForm" class="hidden flex flex-col gap-3">
+    <h2 class="road text-2xl font-semibold">Yeni Şifre Belirle</h2>
+    <input id="nPw" class="field" type="password" autocomplete="new-password" placeholder="Yeni Şifre (en az 6 karakter)" required>
+    <input id="nPw2" class="field" type="password" autocomplete="new-password" placeholder="Yeni Şifre (tekrar)" required>
+    <button class="btn" type="submit">Şifreyi Kaydet</button>
+    <button class="link self-center" type="button" data-back>← Girişe Dön</button>
+  </form>
+
+  <p id="authMsg" class="min-h-5 text-sm"></p>
+  <datalist id="brands"><option value="Honda"><option value="Yamaha"><option value="Kawasaki"><option value="Suzuki"><option value="BMW"><option value="Ducati"><option value="KTM"><option value="Triumph"><option value="Harley-Davidson"><option value="Royal Enfield"><option value="Aprilia"><option value="Husqvarna"><option value="Moto Guzzi"><option value="Benelli"><option value="CFMOTO"><option value="Voge"><option value="Vespa"><option value="Piaggio"><option value="SYM"><option value="Kymco"><option value="Bajaj"><option value="TVS"><option value="Kuba"><option value="Mondial"><option value="RKS"><option value="Arora"><option value="Lifan"><option value="Mash"><option value="Hero"><option value="Diğer"></datalist>
+</main>
+
+<!-- Profil paneli -->
+<main id="dash" class="hidden mx-auto grid h-[100dvh] max-w-md grid-rows-[auto_auto_minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)] gap-3 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+.75rem)]">
+
+  <!-- 0. Üst kuşak: ayarlar | tarih - saat | çıkış -->
+  <header class="relative overflow-hidden rounded-2xl" style="background:linear-gradient(90deg,rgba(234,134,33,.30) 0%,#073049 38%,#052437 70%,#031a29 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)">
+    <div class="flex flex-col gap-1.5 px-2.5 pb-4 pt-2">
+      <div class="flex items-center justify-center gap-1.5">
+        <svg class="h-4 w-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-moto"/></svg>
+        <span class="road text-base font-bold leading-none tracking-wide">Moto <span class="text-amber-400">Life</span></span>
+      </div>
+      <div class="flex items-center justify-between gap-2">
+        <button id="dashSettings" type="button" aria-label="Ayarlar" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-zinc-100 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#gear"/></svg></button>
+        <p class="road min-w-0 truncate whitespace-nowrap text-center text-[17px] font-semibold leading-none"><span id="dashDate"></span> <span class="text-amber-400">-</span> <span id="dashClock" class="tabular-nums"></span></p>
+        <button id="dashLogout" type="button" aria-label="Çıkış Yap" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-red-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-logout"/></svg></button>
+      </div>
+    </div>
+    <!-- Kuşak şeritleri: soldan sağa sayfanın turuncu / krem tonları -->
+    <div class="pointer-events-none absolute inset-x-0 bottom-[7px] h-[4px]" style="background:linear-gradient(90deg,#EA8621 0%,#F2A64E 45%,rgba(242,166,78,.12) 100%)"></div>
+    <div class="pointer-events-none absolute inset-x-0 bottom-[2px] h-[2px]" style="background:linear-gradient(90deg,#F4EFE6 0%,rgba(244,239,230,.55) 35%,rgba(244,239,230,.06) 100%)"></div>
+  </header>
+
+  <!-- 1. Profil ve karşılama -->
+  <section class="card flex items-center gap-3">
+    <button id="avatarBtn" type="button" aria-label="Profil fotoğrafını değiştir" class="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-full">
+      <img id="avatarImg" class="hidden h-full w-full object-cover" alt="Profil fotoğrafı">
+      <span id="avatarInit" class="flex h-full w-full items-center justify-center bg-amber-400 road text-3xl font-bold text-ink"></span>
+    </button>
+    <input id="avatarFile" type="file" accept="image/*" class="hidden">
+    <div class="min-w-0 flex-1">
+      <p id="greetHello" class="road text-3xl font-bold leading-none"></p>
+      <p id="greetName" class="mt-1 truncate text-base font-medium"></p>
+      <p id="greetMsg" class="mt-0.5 text-xs leading-snug text-zinc-400"></p>
+    </div>
+  </section>
+
+  <!-- 2. Hava durumu -->
+  <section class="card flex flex-col justify-between gap-1">
+    <div class="flex items-center gap-2">
+      <span id="wxCity" class="road min-w-0 truncate text-xl font-semibold leading-none">Konum Alınıyor…</span>
+      <button id="wxLocBtn" type="button" aria-label="Konumu Yenile" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-amber-300 active:bg-white/20"><svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-pin"/></svg></button>
+      <button id="wxRefreshBtn" type="button" aria-label="Hava Durumunu Yenile" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 text-amber-300 active:bg-white/20"><svg id="wxRefreshIc" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button>
+    </div>
+    <div id="wxMain" class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span id="wxIcon" class="text-3xl leading-none">🌡️</span>
+        <span id="wxTemp" class="road text-4xl font-bold leading-none">--°</span>
+      </div>
+      <div class="min-w-0 text-right text-sm">
+        <div id="wxDesc" class="truncate font-medium">Hava Durumu Yükleniyor…</div>
+        <div id="wxMeta" class="truncate text-xs text-zinc-400"></div>
+      </div>
+    </div>
+    <div id="wxHours" class="grid grid-cols-6 gap-1 text-center"></div>
+    <div id="wxFallback" class="hidden space-y-1.5">
+      <p id="wxFbMsg" class="text-xs text-zinc-400"></p>
+      <div class="flex gap-2">
+        <input id="wxCityInput" class="field !py-2" placeholder="Şehir Yaz (ör. Ankara)" autocomplete="off">
+        <button id="wxCityBtn" class="btn-sm btn-accent" type="button">Ara</button>
+      </div>
+      <button id="wxUseGeo" class="link !p-0 !text-xs" type="button">Konumumu Kullan</button>
+    </div>
+    <p class="text-[10px] leading-none text-zinc-500"><a href="https://open-meteo.com/" target="_blank" rel="noopener" class="underline">Open-Meteo</a> verisi · <span id="wxStamp">5 dakikada bir yenilenir</span></p>
+  </section>
+
+  <!-- 3. Günün sürüş notları -->
+  <section class="card flex flex-col gap-1.5 overflow-y-auto">
+    <h2 class="road text-lg font-semibold tracking-wide text-zinc-300">Günün Sürüş Notları</h2>
+    <ul id="tips" class="space-y-1.5"></ul>
+  </section>
+
+  <!-- 4. Gruplarım -->
+  <section class="card flex flex-col gap-2">
+    <div class="flex items-center justify-between gap-2">
+      <h2 class="road text-lg font-semibold tracking-wide text-zinc-300">Gruplarım</h2>
+      <button id="toGroups" class="btn-sm btn-accent" type="button">Gruplara Git →</button>
+    </div>
+    <ul id="myGroups" class="min-h-0 flex-1 space-y-1.5 overflow-y-auto"></ul>
+  </section>
+</main>
+
+<!-- Katılma ekranı -->
+<main id="join" class="hidden max-w-md mx-auto min-h-[100dvh] flex flex-col gap-4 p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+1.5rem)]">
+  <div>
+    <h1 class="road text-5xl font-bold leading-[0.9]">Moto <span class="text-amber-400">Life</span></h1>
+    <p class="road mt-2 text-xl tracking-wide text-zinc-400">İnterkom &amp; Müzik</p>
+  </div>
+  <p class="text-zinc-400">Açık bir gruba şifreyle katıl ya da kendi grubunu oluştur. Hoparlör yerine kulaklık kullanmanı öneririz.</p>
+
+  <h2 class="road text-2xl font-semibold mt-2">Açık Gruplar</h2>
+  <ul id="roomList" class="space-y-2"></ul>
+  <div id="pwBox" class="hidden space-y-2 rounded-xl bg-surface p-3">
+    <div class="text-zinc-300">Grup: <b id="pwRoom"></b></div>
+    <input id="joinPw" type="password" autocomplete="off" placeholder="Grup Şifresi"
+      class="field">
+    <button id="joinBtn" class="btn">Gruba Katıl</button>
+    <p id="joinErr" class="text-red-400 min-h-6"></p>
+  </div>
+
+  <h2 class="road text-2xl font-semibold mt-4">Yeni Grup Oluştur</h2>
+  <input id="newRoom" autocomplete="off" maxlength="32" placeholder="Grup Adı (ör. pazar-turu)"
+    class="field">
+  <input id="newPw" type="password" autocomplete="off" maxlength="64" placeholder="Grup Şifresi (en az 4 karakter)"
+    class="field">
+  <button id="createBtn" class="btn">Grubu Aç ve Gir</button>
+  <p id="createErr" class="text-red-400 min-h-6"></p>
+</main>
+
+<main id="motor" class="hidden mx-auto min-h-[100dvh] max-w-md space-y-3 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+1rem)]">
+  <h1 class="road text-3xl font-bold">My Motor</h1>
+  <section class="card space-y-3">
+    <div class="flex items-center gap-3">
+      <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-ink">
+        <svg class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-moto"/></svg>
+      </div>
+      <div class="min-w-0">
+        <p id="motoBrand" class="road truncate text-2xl font-semibold leading-none"></p>
+        <p id="motoModel" class="mt-1 truncate text-zinc-300"></p>
+      </div>
+    </div>
+    <p class="text-xs text-zinc-500">Motosiklet bilgilerini Ayarlar &gt; Profil Ayarları bölümünden güncelleyebilirsin.</p>
+    <button id="motoEdit" class="btn-sec" type="button">Bilgileri Güncelle</button>
+  </section>
+</main>
+
+<main id="world" class="hidden mx-auto min-h-[100dvh] max-w-md space-y-3 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+1rem)]">
+  <h1 class="road text-3xl font-bold">Açık Dünya</h1>
+  <section class="card flex flex-col items-center gap-2 py-10 text-center">
+    <svg class="h-10 w-10 text-zinc-500" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe"/></svg>
+    <p class="font-medium">Bu bölüm henüz hazır değil</p>
+    <p class="text-sm text-zinc-400">Hazır olduğunda burada görünecek.</p>
+  </section>
+</main>
+
+<main id="friends" class="hidden mx-auto min-h-[100dvh] max-w-md space-y-3 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+1rem)]">
+  <h1 class="road text-3xl font-bold">Arkadaşlar</h1>
+  <section class="card flex flex-col items-center gap-2 py-10 text-center">
+    <svg class="h-10 w-10 text-zinc-500" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><use href="#i-users"/></svg>
+    <p class="font-medium">Bu bölüm henüz hazır değil</p>
+    <p class="text-sm text-zinc-400">Hazır olduğunda burada görünecek.</p>
+  </section>
+</main>
+
+<main id="social" class="hidden mx-auto flex h-[100dvh] max-w-md flex-col pb-[var(--nav)] pt-[calc(0.75rem+env(safe-area-inset-top))] md:max-w-4xl">
+  <h1 class="road px-4 text-3xl font-bold leading-none">Sosyal</h1>
+  <div id="social-root" class="min-h-0 flex-1"></div>
+</main>
+<main id="settings" class="hidden mx-auto min-h-[100dvh] max-w-md space-y-3 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+1rem)]">
+  <h1 class="road text-3xl font-bold">Ayarlar</h1>
+
+  <details id="accProfile" class="card">
+    <summary>Profil Ayarları</summary>
+    <div class="space-y-3 pt-3">
+      <label class="block text-xs text-zinc-400">Kullanıcı Adı<input id="sUser" class="field mt-1" maxlength="20" autocapitalize="none"></label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block text-xs text-zinc-400">İsim<input id="sFirst" class="field mt-1" maxlength="40"></label>
+        <label class="block text-xs text-zinc-400">Soyisim<input id="sLast" class="field mt-1" maxlength="40"></label>
+      </div>
+      <label class="block text-xs text-zinc-400">Cinsiyet
+        <select id="sGender" class="field mt-1">
+          <option value="erkek">Erkek</option>
+          <option value="kadin">Kadın</option>
+          <option value="belirtmek-istemiyorum">Belirtmek İstemiyorum</option>
+        </select>
+      </label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block text-xs text-zinc-400">Motosiklet Markası<input id="sBrand" class="field mt-1" list="brands" maxlength="40"></label>
+        <label class="block text-xs text-zinc-400">Model<input id="sModel" class="field mt-1" maxlength="40"></label>
+      </div>
+      <label class="block text-xs text-zinc-400">E-posta<input id="sEmail" type="email" class="field mt-1"></label>
+      <div id="sCurBox">
+        <label class="block text-xs text-zinc-400">Mevcut Şifre (e-posta ya da şifre değişirken)<input id="sCurPw" type="password" autocomplete="current-password" class="field mt-1"></label>
+      </div>
+      <label class="block text-xs text-zinc-400">Yeni Şifre (boş bırakırsan değişmez)<input id="sNewPw" type="password" autocomplete="new-password" class="field mt-1"></label>
+      <p class="text-xs text-zinc-500">Kullanıcı adı değişikliği, bir sonraki gruba katılışında görünür.</p>
+      <button id="sSave" class="btn" type="button">Kaydet</button>
+      <p id="sMsg" class="min-h-6 text-center"></p>
+    </div>
+  </details>
+
+  <details id="accPerm" class="card">
+    <summary>Bağlantı İzinleri</summary>
+    <ul id="permList" class="space-y-2 pt-3"></ul>
+    <p id="permMsg" class="min-h-5 pt-2 text-xs text-zinc-400"></p>
+  </details>
+
+  <details id="accCal" class="card">
+    <summary>Telefon Kalibrasyon Ayarları</summary>
+    <div class="space-y-5 pt-3">
+      <div class="space-y-1.5">
+        <div class="flex justify-between text-sm"><span>Mikrofon Hassasiyeti</span><span id="calTalkVal" class="text-zinc-400"></span></div>
+        <input id="calTalk" type="range" min="1" max="10" step="1" class="w-full accent-amber-400">
+        <p class="text-xs text-zinc-500">Rüzgâr sesi konuşma gibi algılanıyorsa azalt, sesin algılanmıyorsa artır.</p>
+        <div class="relative h-2 overflow-hidden rounded-full bg-white/10">
+          <div id="calLevel" class="h-full bg-zinc-500" style="width:0%"></div>
+          <div id="calMark" class="absolute top-0 h-full w-0.5 bg-white"></div>
+        </div>
+        <button id="calTest" class="btn-sec" type="button">Mikrofonu Test Et</button>
+        <p id="calMsg" class="min-h-4 text-xs text-amber-300"></p>
+      </div>
+      <div class="space-y-1.5">
+        <div class="flex justify-between text-sm"><span>Konuşurken Radyo Sesi</span><span id="calDuckVal" class="text-zinc-400"></span></div>
+        <input id="calDuck" type="range" min="10" max="60" step="5" class="w-full accent-amber-400">
+        <p class="text-xs text-zinc-500">Biri konuşurken radyonun düşeceği ses seviyesi. Düşük değer radyoyu daha çok kısar.</p>
+      </div>
+      <div class="space-y-3">
+        <label class="flex items-center justify-between gap-3 text-sm"><span>Yankı Engelleme</span><input id="calEcho" type="checkbox" class="h-5 w-5 accent-amber-400"></label>
+        <label class="flex items-center justify-between gap-3 text-sm"><span>Gürültü Bastırma</span><input id="calNoise" type="checkbox" class="h-5 w-5 accent-amber-400"></label>
+        <label class="flex items-center justify-between gap-3 text-sm"><span>Otomatik Ses Seviyesi</span><input id="calAgc" type="checkbox" class="h-5 w-5 accent-amber-400"></label>
+        <p class="text-xs text-zinc-500">Ses işleme ayarları bir sonraki gruba katılışında geçerli olur.</p>
+      </div>
+      <button id="calReset" class="btn-sec" type="button">Varsayılana Dön</button>
+    </div>
+  </details>
+
+  <button id="logoutBtn" class="btn-sec !text-red-300" type="button">Çıkış Yap</button>
+</main>
+
+<!-- Ana uygulama -->
+<div id="app" class="hidden max-w-md mx-auto h-[100dvh] flex flex-col pb-[var(--nav)]">
+  <header class="grid grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2 p-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+    <button id="gearGroup" type="button" aria-label="Grup Ayarları" class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-zinc-200 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#gear"/></svg></button>
+    <div id="roomTitle" class="road truncate text-center text-3xl font-bold leading-none"></div>
+    <button id="leaveBtn" type="button" aria-label="Gruptan Çık" class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-red-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-logout"/></svg></button>
+  </header>
+
+  <!-- Sayfa başı: İnterkom / İnternet Radyosu sekmeleri -->
+  <div class="shrink-0 px-4 pb-3">
+    <div class="grid grid-cols-2 gap-1 rounded-xl bg-surface p-1">
+      <button id="tabCommBtn" type="button">İnterkom</button>
+      <button id="tabRadioBtn" type="button">İnternet Radyosu</button>
+    </div>
+  </div>
+
+  <!-- Alt bölüm: kalan tüm alan (interkom düğmesi ya da internet radyosu) -->
+  <div class="flex min-h-0 flex-1 flex-col px-4 pb-3">
+
+    <!-- İnterkom sayfası: gruptakiler (en fazla 6 kişilik sabit yükseklik) + konuşma kontrolleri -->
+    <section id="tab-comm" class="flex min-h-0 flex-1 flex-col gap-3">
+      <div class="shrink-0">
+        <h2 class="road text-center text-2xl font-semibold leading-none">İnterkom</h2>
+        <p id="count" class="mb-2 mt-1 text-center text-xs text-zinc-400"></p>
+        <ul id="peerList" class="h-[19.875rem] max-h-[36dvh] space-y-1.5 overflow-y-auto"></ul>
+      </div>
+      <div class="grid shrink-0 grid-cols-2 gap-1 rounded-xl bg-surface p-1">
+        <button id="modeOpen" class="rounded-lg py-3 font-medium">Açık Kanal</button>
+        <button id="modePtt" class="rounded-lg py-3 font-medium">Bas-Konuş</button>
+      </div>
+      <button id="pttBtn" class="touch-none select-none w-full min-h-24 flex-1 rounded-3xl road text-2xl font-semibold sm:text-4xl"></button>
+    </section>
+
+  <!-- Radyo sekmesi -->
+  <section id="tab-radio" class="hidden min-h-0 flex-1 flex flex-col gap-3 overflow-y-auto">
+    <h2 class="road text-center text-2xl font-semibold leading-none">İnternet Radyosu</h2>
+    <div>
+      <button id="catToggle" class="relative flex w-full items-center justify-center rounded-xl bg-surface px-9 py-3.5 text-base font-medium">
+        <span id="catLabel" class="min-w-0 truncate text-center">Kategoriler</span><span id="catArrow" class="absolute right-4">▾</span>
+      </button>
+      <div id="catMenu" class="mt-2 hidden max-h-56 overflow-y-auto rounded-xl bg-surface p-1"></div>
+    </div>
+    <div>
+      <div class="flex items-stretch gap-2">
+        <button id="stPrev" type="button" aria-label="Önceki kanal" class="flex w-12 shrink-0 items-center justify-center rounded-xl bg-surface disabled:opacity-40"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button id="stToggle" type="button" class="relative flex min-w-0 flex-1 items-center justify-center rounded-xl bg-surface px-9 py-4 text-base font-medium">
+          <span id="stLabel" class="min-w-0 flex-1 truncate text-center">Kanal Seç</span><span id="stArrow" class="absolute right-4">▾</span>
+        </button>
+        <button id="stNext" type="button" aria-label="Sonraki kanal" class="flex w-12 shrink-0 items-center justify-center rounded-xl bg-surface disabled:opacity-40"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+      <ul id="stationList" class="mt-2 hidden max-h-56 space-y-1 overflow-y-auto rounded-xl bg-surface p-1"></ul>
+    </div>
+    <div id="groupBanner" class="hidden items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3">
+      <span id="groupBannerText" class="min-w-0 flex-1 truncate"></span>
+      <button id="joinGroupBtn" class="btn-sm btn-accent shrink-0">Katıl</button>
+    </div>
+    <button id="shareBtn" class="btn-sec hidden !text-amber-300"></button>
+    <p id="radioPerm" class="text-sm text-zinc-500 empty:hidden"></p>
+    <p id="radioNote" class="text-amber-300 empty:hidden"></p>
+    <!-- Altta: ses ayarı (soldan sağa kaydırmalı), onun altında Başlat / Durdur -->
+    <div class="mt-auto flex flex-col gap-3">
+      <div class="space-y-1">
+        <div class="flex items-center justify-between"><span class="text-sm text-zinc-400">Ses</span><span id="volText" class="road text-xl font-semibold">60%</span></div>
+        <input id="volRange" type="range" min="0" max="100" step="5" value="60" aria-label="Radyo Sesi" class="h-8 w-full accent-amber-400">
+        <div id="duckNote" class="min-h-5 text-center text-sm text-amber-300"></div>
+      </div>
+      <button id="radioBtn" class="btn road flex h-16 items-center justify-center gap-2 !rounded-2xl !text-3xl"><svg class="h-7 w-7" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><span>Başlat</span></button>
+    </div>
+  </section>
+  </div>
+
+</div>
+
+<nav id="bottomNav" class="hidden fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-ink/90 backdrop-blur" style="padding-bottom:env(safe-area-inset-bottom)">
+  <div class="mx-auto grid max-w-md grid-cols-6">
+    <button type="button" data-nav="home" aria-label="Ana Sayfa" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-home"/></svg>
+      <span class="text-center text-[10px] leading-tight">Ana Sayfa</span>
+    </button>
+    <button type="button" data-nav="comm" aria-label="İnterkom ve Müzik" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-comm"/></svg>
+      <span class="text-center text-[10px] leading-tight">İnterkom ve Müzik</span>
+    </button>
+    <button type="button" data-nav="motor" aria-label="My Motor" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-moto"/></svg>
+      <span class="text-center text-[10px] leading-tight">My Motor</span>
+    </button>
+    <button type="button" data-nav="world" aria-label="Açık Dünya" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe"/></svg>
+      <span class="text-center text-[10px] leading-tight">Açık Dünya</span>
+    </button>
+    <button type="button" data-nav="friends" aria-label="Arkadaşlar" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-users"/></svg>
+      <span class="text-center text-[10px] leading-tight">Arkadaşlar</span>
+    </button>
+    <button type="button" data-nav="social" aria-label="Sosyal" class="relative flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-social"/></svg>
+      <span class="text-center text-[10px] leading-tight">Sosyal</span>
+      <span id="socialBadge" class="absolute right-2 top-1 hidden min-w-[1.1rem] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-[1.1rem] text-white"></span>
+    </button>
+  </div>
+</nav>
+
+<div id="notice" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-ink/95 p-8 text-center">
+  <p id="noticeText" class="road text-4xl font-bold"></p>
+  <button id="noticeBtn" class="btn !w-auto px-10">Tamam</button>
+</div>
+<div id="sheet" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6">
+  <div class="w-full max-w-sm space-y-4 rounded-2xl bg-[#052437] p-5 text-center" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)">
+    <p id="sheetTitle" class="road truncate text-2xl font-semibold"></p>
+    <div class="flex flex-col gap-2">
+      <button id="sheetSelf" type="button" class="btn-sec">1. Sadece Kendin Dinle</button>
+      <button id="sheetGroup" type="button" class="btn">2. Tüm Gruba Dinlet</button>
+    </div>
+    <p id="sheetHint" class="text-sm text-zinc-400 empty:hidden"></p>
+    <button id="sheetCancel" type="button" class="w-full py-1 text-zinc-400">Vazgeç</button>
+  </div>
+</div>
+<div id="logoutAsk" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-6">
+  <div class="w-full max-w-sm space-y-4 rounded-2xl bg-[#052437] p-5 text-center" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)">
+    <p id="askText" class="road text-2xl font-semibold">Çıkış yapılsın mı?</p>
+    <div class="grid grid-cols-2 gap-2">
+      <button id="logoutNo" type="button" class="btn-sec">Hayır</button>
+      <button id="logoutYes" type="button" class="btn">Evet</button>
+    </div>
+  </div>
+</div>
+<div id="approve" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6">
+  <div class="w-full max-w-sm space-y-4 rounded-2xl bg-surface p-5 text-center">
+    <p id="approveText" class="text-lg"></p>
+    <div class="grid grid-cols-2 gap-2">
+      <button id="approveNo" class="btn-sec">Reddet</button>
+      <button id="approveYes" class="btn">Onayla</button>
+    </div>
+  </div>
+</div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v4M8 23h8"/></symbol>
+<symbol id="i-micoff" viewBox="0 0 24 24"><path d="M1 1l22 22"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><path d="M12 19v4M8 23h8"/></symbol>
+<symbol id="i-vol" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></symbol>
+<symbol id="i-volx" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M23 9l-6 6M17 9l6 6"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5h4v5"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></symbol>
+<symbol id="i-comm" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
+<symbol id="i-moto" viewBox="0 0 24 24"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-6h6l4 6"/><path d="M14 11l-1-4h3"/><path d="M7.5 11H11"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+<symbol id="i-social" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.7-.8L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol></svg>
+<div id="gset" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-ink/70 sm:items-center">
+  <div class="max-h-[100dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-3xl bg-[#052437] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-3xl" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)">
+    <div class="flex items-center justify-between">
+      <h2 class="road text-2xl font-semibold">Grup Ayarları</h2>
+      <button id="gClose" type="button" aria-label="Kapat" class="rounded-lg px-3 py-2 text-2xl text-zinc-400">✕</button>
+    </div>
+
+    <div class="space-y-3">
+      <h3 class="text-xs font-medium text-zinc-400">Ses ve Bildirimler (yalnızca bu cihaz)</h3>
+      <div class="space-y-1.5">
+        <div class="flex justify-between text-sm"><span>Grup Sesi</span><span id="gVoiceVal" class="text-zinc-400"></span></div>
+        <input id="gVoice" type="range" min="0" max="100" step="5" class="w-full accent-amber-400">
+        <p class="text-xs text-zinc-500">Gruptakilerin konuşma sesi. Radyo sesi, İnternet Radyosu sekmesinden ayarlanır.</p>
+      </div>
+      <label class="flex items-center justify-between gap-3 text-sm"><span>Biri Konuşurken Radyoyu Kıs</span><input id="gDuckOn" type="checkbox" class="h-5 w-5 shrink-0 accent-amber-400"></label>
+      <label class="flex items-center justify-between gap-3 text-sm"><span>Katılma ve Ayrılma Sesi</span><input id="gBeep" type="checkbox" class="h-5 w-5 shrink-0 accent-amber-400"></label>
+      <label class="flex items-center justify-between gap-3 text-sm"><span>Ekran Açık Kalsın</span><input id="gWake" type="checkbox" class="h-5 w-5 shrink-0 accent-amber-400"></label>
+    </div>
+
+    <div id="gOwner" class="space-y-3 border-t border-white/10 pt-4">
+      <h3 class="text-xs font-medium text-zinc-400">Grup Yönetimi (grup sahibi)</h3>
+      <label class="flex items-center justify-between gap-3 text-sm"><span>Yeni Üyelere Kapat</span><input id="gLocked" type="checkbox" class="h-5 w-5 shrink-0 accent-amber-400"></label>
+      <p class="-mt-1 text-xs text-zinc-500">Daha önce katılmış olanlar şifreyle tekrar girebilir.</p>
+      <label class="flex items-center justify-between gap-3 text-sm"><span>Radyo Paylaşım İsteklerini Kabul Et</span><input id="gAllowReq" type="checkbox" class="h-5 w-5 shrink-0 accent-amber-400"></label>
+      <label class="flex items-center justify-between gap-3 text-sm"><span>Azami Kişi Sayısı</span>
+        <select id="gMax" class="field !w-24 !py-2">
+          <option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option>
+        </select>
+      </label>
+      <div class="space-y-1.5">
+        <label class="block text-sm" for="gPw">Grup Şifresini Değiştir</label>
+        <div class="flex gap-2">
+          <input id="gPw" type="password" autocomplete="new-password" class="field" placeholder="Yeni Şifre (en az 4 karakter)">
+          <button id="gPwBtn" type="button" class="btn-sm btn-accent shrink-0">Değiştir</button>
+        </div>
+      </div>
+      <button id="closeBtn" type="button" class="btn-sec !text-red-300">Grubu Sil</button>
+    </div>
+    <p id="gNote" class="hidden text-xs text-zinc-500">Grup yönetimi ayarlarını yalnızca grup sahibi değiştirebilir.</p>
+    <p id="gMsg" class="min-h-5 text-center text-sm"></p>
+  </div>
+</div>
+<div id="audios"></div>
+<audio id="radioEl" preload="none"></audio>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const socket = io({ autoConnect: false });
+// Ücretsiz Google STUN. Sıkı NAT/operatör ağlarında TURN gerekebilir (README notuna bak).
+const ICE = { iceServers: [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' }
+]};
+
+const peers = new Map();            // socketId -> { pc, audio, name, state }
+let local = null, mode = 'open', muted = false, pttDown = false, radioUrl = '', radioName = '';
+let ownerId = '', isOwner = false, groupRadio = null, following = true, radioQueue = [];
+// Telefon kalibrasyonu (cihazda saklanır)
+const CAL_DEFAULT = { talk: 5, duck: 0.25, duckOn: true, echo: true, noise: true, agc: true };
+const TALK_LEVELS = [0.08, 0.065, 0.05, 0.04, 0.035, 0.03, 0.025, 0.02, 0.015, 0.01];   // dizin 0 = en az hassas
+let CAL = { ...CAL_DEFAULT };
+try { Object.assign(CAL, JSON.parse(localStorage.getItem('cal') || '{}')); } catch {}
+const saveCal = () => { try { localStorage.setItem('cal', JSON.stringify(CAL)); } catch {} };
+const talkThr = () => TALK_LEVELS[CAL.talk] ?? 0.03;
+// Grup tercihleri (cihazda saklanır) ve grup ayarları (sunucudan gelir)
+let GP = { wake: true, beep: true, voice: 1 };
+try { Object.assign(GP, JSON.parse(localStorage.getItem('gpref') || '{}')); } catch {}
+const saveGP = () => { try { localStorage.setItem('gpref', JSON.stringify(GP)); } catch {} };
+let spkOn = true, gset = { locked: false, max: 6, allowReq: true };
+const speaking = new Map(), rowEls = new Map();   // konuşanlar (kimlik -> saniye) ve liste satırları
+const radio = $('radioEl');
+const clearErr = () => { $('joinErr').textContent = ''; $('createErr').textContent = ''; };
+const showErr = (m, id) => { clearErr(); $(id).textContent = m || ''; };
+
+/* ---------- Arayüz yardımcıları ---------- */
+const ICON = id => '<svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#' + id + '"/></svg>';
+function renderPeers() {
+  const list = $('peerList');
+  list.innerHTML = ''; rowEls.clear();
+  $('count').textContent = (peers.size + 1) + ' Kişi Grupta' + (isOwner ? ' · Grup Sahibisin' : '');
+  $('closeBtn').classList.toggle('hidden', !isOwner);
+  const add = (id, name, self) => {
+    const li = document.createElement('li');
+    li.innerHTML = '<div class="min-w-0 flex-1"><div class="truncate text-sm font-medium" data-name></div><div class="truncate text-xs" data-sub></div></div>';
+    const isOwnerRow = self ? socket.id === ownerId : id === ownerId;
+    li.querySelector('[data-name]').textContent = name + (self ? ' (Sen)' : '') + (isOwnerRow ? ' · Grup Sahibi' : '');
+    ['mic', 'spk'].forEach(kind => {                       // kendi satırında düğme, diğerlerinde durum göstergesi
+      const el = document.createElement(self ? 'button' : 'span');
+      if (self) {
+        el.type = 'button';
+        el.onclick = kind === 'mic' ? toggleMic : toggleSpk;
+        el.setAttribute('aria-label', kind === 'mic' ? 'Mikrofonu aç veya kapat' : 'Hoparlörü aç veya kapat');
+      }
+      el.dataset.kind = kind;
+      el.innerHTML = ICON(kind === 'mic' ? 'i-mic' : 'i-vol');
+      li.appendChild(el);
+    });
+    if (!self && isOwner) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn-sm shrink-0'; b.textContent = 'Çıkar';
+      b.onclick = () => { if (confirm(name + ' gruptan çıkarılsın mı?')) socket.emit('kick', { id }); };
+      li.appendChild(b);
+    }
+    list.appendChild(li);
+    rowEls.set(self ? 'me' : id, li);
+  };
+  add('me', me.username, true);
+  peers.forEach((p, id) => add(id, p.name, false));
+  paintRows();
+}
+// Satırların rengi ve simgeleri yerinde güncellenir: konuşan yeşil, hoparlörü kapalı kırmızı, diğerleri normal
+function paintRows() {
+  rowEls.forEach((el, id) => {
+    const self = id === 'me', p = self ? null : peers.get(id);
+    const mic = self ? !muted : !p || p.mic !== false, spk = self ? spkOn : !p || p.spk !== false;
+    const sec = speaking.get(id), failed = !!p && p.state === 'failed', ok = !p || p.state === 'connected';
+    el.className = 'flex h-12 items-center gap-2 rounded-xl px-3 ' +
+      (sec !== undefined ? 'row-on' : !spk ? 'row-off' : 'bg-surface');   // düz pastel dolgu, dış çerçeve yok
+    const sub = el.querySelector('[data-sub]');
+    sub.textContent = sec !== undefined ? 'Konuşuyor · ' + fmt(sec) : self ? 'Bağlısın' : ok ? 'Bağlı' : failed ? 'Bağlanamadı' : 'Bağlanıyor…';
+    sub.className = 'truncate text-xs ' + (sec !== undefined ? 'text-emerald-200' : failed ? 'text-red-300' : 'text-zinc-400');
+    [['mic', mic, '#i-mic', '#i-micoff'], ['spk', spk, '#i-vol', '#i-volx']].forEach(([k, on, a, b]) => {
+      const ic = el.querySelector('[data-kind="' + k + '"]');
+      ic.querySelector('use').setAttribute('href', on ? a : b);
+      ic.className = 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ' + (on ? 'text-zinc-300' : 'text-red-300') + (self ? ' bg-white/10' : '');
+    });
+  });
+}
+function setSpeaking(list) {
+  speaking.clear();
+  list.forEach(sp => speaking.set(sp.id, sp.secs));
+  paintRows();
+}
+const sendStatus = () => { if (socket.connected) socket.emit('status', { mic: !muted, spk: spkOn }); };
+function toggleMic() { muted = !muted; refreshMic(); sendStatus(); }
+function toggleSpk() { spkOn = !spkOn; applySpeaker(); paintRows(); sendStatus(); }
+function applySpeaker() {                                  // hoparlör kapalıyken grup sesi ve radyo susar
+  peers.forEach(p => { p.audio.muted = !spkOn; });
+  radio.muted = !spkOn;
+}
+function beep(f) {
+  if (!GP.beep || !spkOn || !actx) return;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.frequency.value = f; g.gain.value = 0.05;
+  o.connect(g); g.connect(actx.destination);
+  o.start(); o.stop(actx.currentTime + 0.12);
+}
+socket.on('status', ({ id, mic, spk }) => {
+  const p = peers.get(id);
+  if (p) { p.mic = mic; p.spk = spk; paintRows(); }
+});
+
+function switchTab(t) {
+  $('tab-comm').classList.toggle('hidden', t !== 'comm');
+  $('tab-radio').classList.toggle('hidden', t !== 'radio');
+  const on = 'rounded-lg py-2.5 text-sm font-medium bg-amber-400 text-ink', off = 'rounded-lg py-2.5 text-sm font-medium text-zinc-300';
+  $('tabCommBtn').className = t === 'comm' ? on : off;
+  $('tabRadioBtn').className = t === 'radio' ? on : off;
+}
+$('tabCommBtn').onclick = () => switchTab('comm');
+$('tabRadioBtn').onclick = () => { switchTab('radio'); if (!stationsLoaded) { stationsLoaded = true; loadStations(); } };
+
+/* ---------- Mikrofon kontrolü ---------- */
+function refreshMic() {
+  const live = !muted && (mode === 'open' || pttDown);
+  local.getAudioTracks().forEach(t => t.enabled = live);
+  const b = $('pttBtn');
+  b.className = 'touch-none select-none w-full min-h-24 flex-1 rounded-3xl road text-2xl font-semibold sm:text-4xl ' +
+    (live ? 'bg-amber-400 text-ink' : 'bg-surface text-zinc-400');
+  b.textContent = muted ? 'Mikrofon Kapalı'
+    : mode === 'open' ? 'Kanal Açık, Konuşabilirsin'
+    : pttDown ? 'Konuşuyorsun' : 'Basılı Tut ve Konuş';
+  paintRows();
+}
+function setMode(m) {
+  mode = m; pttDown = false;
+  const on = 'rounded-lg py-3 font-medium bg-amber-400 text-ink';
+  const off = 'rounded-lg py-3 font-medium text-zinc-300';
+  $('modeOpen').className = m === 'open' ? on : off;
+  $('modePtt').className = m === 'ptt' ? on : off;
+  refreshMic();
+}
+$('modeOpen').onclick = () => setMode('open');
+$('modePtt').onclick = () => setMode('ptt');
+
+const ptt = $('pttBtn');
+ptt.oncontextmenu = e => e.preventDefault();
+ptt.addEventListener('pointerdown', e => {
+  if (mode !== 'ptt') return;
+  ptt.setPointerCapture(e.pointerId);
+  pttDown = true; refreshMic(); navigator.vibrate?.(20);
+});
+['pointerup', 'pointercancel'].forEach(ev => ptt.addEventListener(ev, () => {
+  if (!pttDown) return;
+  pttDown = false; refreshMic();
+}));
+// Masaüstünde Boşluk tuşu ile bas-konuş
+addEventListener('keydown', e => {
+  if (!local || mode !== 'ptt' || e.code !== 'Space' || e.repeat) return;
+  if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  e.preventDefault(); pttDown = true; refreshMic();
+});
+addEventListener('keyup', e => {
+  if (!local || e.code !== 'Space' || !pttDown) return;
+  pttDown = false; refreshMic();
+});
+
+/* ---------- WebRTC (mesh) ---------- */
+function createPeer(id, name) {
+  if (peers.has(id)) return peers.get(id);
+  const pc = new RTCPeerConnection(ICE);
+  const audio = document.createElement('audio');
+  audio.autoplay = true; audio.playsInline = true;
+  $('audios').appendChild(audio);
+  const p = { pc, audio, name: name || 'Sürücü', state: 'new', mic: true, spk: true };
+  peers.set(id, p);
+  audio.muted = !spkOn; audio.volume = GP.voice;
+
+  local.getTracks().forEach(t => pc.addTrack(t, local));
+  pc.onicecandidate = e => e.candidate && socket.emit('signal', { to: id, data: { candidate: e.candidate } });
+  pc.ontrack = e => { audio.srcObject = e.streams[0]; audio.play().catch(() => {}); addMeter(id, e.streams[0]); };
+  pc.onconnectionstatechange = () => { p.state = pc.connectionState; renderPeers(); };
+  renderPeers();
+  return p;
+}
+async function call(id) {
+  const { pc } = peers.get(id);
+  await pc.setLocalDescription(await pc.createOffer());
+  socket.emit('signal', { to: id, data: { sdp: pc.localDescription } });
+}
+function removePeer(id) {
+  const p = peers.get(id);
+  if (!p) return;
+  p.pc.close(); p.audio.remove(); peers.delete(id); meters.delete(id); speaking.delete(id); renderPeers();
+}
+
+// Yeni gelen, gruptakilere teklif (offer) gönderir; gruptakiler cevaplar.
+socket.on('peer-joined', ({ id, name }) => { createPeer(id, name); beep(880); });
+socket.on('peer-left', id => { removePeer(id); beep(440); });
+socket.on('signal', async ({ from, data }) => {
+  const p = peers.get(from) || createPeer(from);
+  const pc = p.pc;
+  if (data.sdp) {
+    await pc.setRemoteDescription(data.sdp);
+    if (data.sdp.type === 'offer') {
+      await pc.setLocalDescription(await pc.createAnswer());
+      socket.emit('signal', { to: from, data: { sdp: pc.localDescription } });
+    }
+  } else if (data.candidate) {
+    try { await pc.addIceCandidate(data.candidate); } catch {}
+  }
+});
+
+/* ---------- Ortak radyo: İnternet Radyosu (Radio Browser genel dizini) ---------- */
+const RB = ['https://de1.api.radio-browser.info', 'https://nl1.api.radio-browser.info'];
+const GENRES = [
+  { label: 'Tüm Kanallar', tags: [''] },
+  { label: 'Pop', tags: ['pop'] },
+  { label: 'Rap / Hip-Hop', tags: ['rap', 'hip hop'] },
+  { label: 'Rock', tags: ['rock'] },
+  { label: 'Türkü / Halk', tags: ['turku', 'folk'] },
+  { label: 'Arabesk', tags: ['arabesk'] },
+  { label: 'Elektronik', tags: ['electronic'] },
+  { label: 'Caz', tags: ['jazz'] },
+  { label: 'Chill', tags: ['chillout', 'ambient'] },
+  { label: 'Klasik', tags: ['classical'] },
+  { label: 'Haber', tags: ['news'] }
+];
+let genreIdx = 0, currentList = [], reqId = 0, stationsLoaded = false, stLoading = false;
+const stationCache = new Map();
+const showNow = () => updateStationBar();
+
+async function rbFetch(params) {
+  const q = new URLSearchParams({ hidebroken: 'true', is_https: 'true', order: 'clickcount', reverse: 'true', limit: '40', ...params });
+  let lastErr;
+  for (const base of RB) {
+    try {
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 8000);
+      const r = await fetch(base + '/json/stations/search?' + q, { signal: ctl.signal });
+      clearTimeout(t);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return await r.json();
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+}
+
+function renderStations(list) {
+  currentList = list;
+  const ul = $('stationList');
+  ul.innerHTML = '';
+  if (!list.length) {
+    ul.innerHTML = '<li class="px-3 py-4 text-center text-sm text-zinc-500">Bu türde çalışan yayın bulunamadı. Başka bir tür dene.</li>';
+  }
+  list.forEach(st => {
+    const li = document.createElement('li'), b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'flex w-full items-center justify-between gap-3 rounded-lg px-3 py-3 text-left ' +
+      (st.url === radioUrl ? 'bg-amber-400 text-ink' : 'text-zinc-200 active:bg-white/10');
+    b.innerHTML = '<span class="min-w-0 flex-1 truncate text-base font-medium"></span><span class="shrink-0 text-xs opacity-70"></span>';
+    b.children[0].textContent = st.name;
+    b.children[1].textContent = st.info;
+    b.onclick = () => { toggleStationMenu(false); openSheet(st); };
+    li.appendChild(b); ul.appendChild(li);
+  });
+  updateStationBar();
+}
+function toggleStationMenu(open) {
+  const show = open ?? $('stationList').classList.contains('hidden');
+  $('stationList').classList.toggle('hidden', !show);
+  $('stArrow').textContent = show ? '▴' : '▾';
+}
+function updateStationBar() {
+  $('stLabel').textContent = radioName || (stLoading ? 'Kanallar Yükleniyor…' : 'Kanal Seç');
+  $('stPrev').disabled = $('stNext').disabled = !currentList.length;
+}
+// Oklar: grup yayınını yönetiyorsan grup kanalı değişir; aksi halde yalnızca sen dinlersin
+function stepStation(dir) {
+  const n = currentList.length;
+  if (!n) return;
+  const i = currentList.findIndex(st => st.url === radioUrl);
+  const st = currentList[i < 0 ? (dir > 0 ? 0 : n - 1) : (i + dir + n) % n];
+  if (following && groupRadio && canControlGroup()) shareToGroup(st); else listenSelf(st);
+}
+$('stPrev').onclick = () => stepStation(-1);
+$('stNext').onclick = () => stepStation(1);
+$('stToggle').onclick = () => toggleStationMenu();
+
+// Grup yayınını yalnızca grup sahibi ya da yayını başlatan değiştirebilir
+const canControlGroup = () => isOwner || (!!groupRadio && groupRadio.by === socket.id);
+function refreshRadioPerm() {
+  const b = $('radioBtn'), locked = following && !!groupRadio && !canControlGroup();
+  b.disabled = locked;
+  b.classList.toggle('opacity-50', locked);
+  $('radioPerm').textContent = locked ? 'Grup yayınını yalnızca grup sahibi ya da yayını başlatan kişi değiştirebilir.' : '';
+  const showGroup = !following && !!groupRadio && groupRadio.playing;
+  $('groupBanner').classList.toggle('hidden', !showGroup);
+  $('groupBanner').classList.toggle('flex', showGroup);
+  if (showGroup) $('groupBannerText').textContent = 'Grup Yayını: ' + (groupRadio.name || 'radyo');
+  const sh = $('shareBtn');
+  sh.classList.toggle('hidden', following || !radioUrl);
+  sh.textContent = isOwner ? 'Bunu Tüm Gruba Dinlet' : 'Gruba Paylaş (grup sahibinden onay ister)';
+  showNow();
+}
+
+// İstasyon seçilince: 1) sadece kendin dinle  2) tüm gruba dinlet
+let sheetStation = null;
+function openSheet(st) {
+  sheetStation = st;
+  $('sheetTitle').textContent = st.name;
+  $('sheetHint').textContent = canControlGroup() ? '' : 'Tüm gruba dinletmek için grup sahibinin onayı gerekir.';
+  $('sheet').classList.remove('hidden');
+}
+const closeSheet = () => $('sheet').classList.add('hidden');
+$('sheetCancel').onclick = closeSheet;
+$('sheet').addEventListener('click', e => { if (e.target === $('sheet')) closeSheet(); });   // kutunun dışına dokununca kapanır
+$('sheetSelf').onclick = () => { const st = sheetStation; closeSheet(); listenSelf(st); };
+$('sheetGroup').onclick = () => { const st = sheetStation; closeSheet(); shareToGroup(st); };
+
+function listenSelf(st) {
+  following = false;
+  radioName = st.name; loadStation(st.url);
+  refreshRadioPerm(); renderStations(currentList);
+}
+function shareToGroup(st, already) {
+  if (canControlGroup()) {                       // grup sahibi / yayını başlatan: doğrudan
+    following = true;
+    radioName = st.name; loadStation(st.url);
+    pushRadio(true);
+    refreshRadioPerm(); renderStations(currentList);
+  } else {                                       // onay iste; bu sırada kendin dinlersin
+    if (!already) listenSelf(st);
+    $('radioNote').textContent = 'Grup sahibinden onay bekleniyor…';
+    socket.emit('radio-request', { url: st.url, name: st.name }, res => {
+      if (res && res.error) $('radioNote').textContent = res.error;
+    });
+  }
+}
+$('shareBtn').onclick = () => shareToGroup({ url: radioUrl, name: radioName }, true);
+
+// Yayını tarayıcıda deneyerek gerçekten açılıp açılmadığını kontrol et
+function probe(url, ms = 6000) {
+  return new Promise(res => {
+    const a = new Audio();
+    let done = false;
+    const fin = ok => {
+      if (done) return;
+      done = true; clearTimeout(t);
+      a.onloadedmetadata = a.oncanplay = a.onerror = null;
+      a.removeAttribute('src'); a.load();
+      res(ok);
+    };
+    const t = setTimeout(() => fin(false), ms);
+    a.preload = 'metadata';
+    a.onloadedmetadata = a.oncanplay = () => fin(true);
+    a.onerror = () => fin(false);
+    a.src = url; a.load();
+  });
+}
+async function probeAll(list, want = 12, conc = 6) {
+  const ok = []; let i = 0;
+  await Promise.all(Array.from({ length: conc }, async () => {
+    while (i < list.length && ok.length < want) {
+      const idx = i++;
+      if (await probe(list[idx].url)) ok.push({ idx, st: list[idx] });
+    }
+  }));
+  return ok.sort((a, b) => a.idx - b.idx).map(o => o.st);
+}
+
+async function loadStations() {
+  const my = ++reqId, key = String(genreIdx), g = GENRES[genreIdx];
+  if (stationCache.has(key)) { stLoading = false; return renderStations(stationCache.get(key)); }
+  stLoading = true; updateStationBar();
+  $('stationList').innerHTML = '<li class="py-6 text-center text-zinc-500">Yayınlar kontrol ediliyor…</li>';
+  try {
+    // Türkiye ve dünya yayınları tek listede: her etiket için ikisini de çek, sırayla (TR, dünya, TR, ...) karıştır
+    const lists = await Promise.all(g.tags.flatMap(tag => [
+      rbFetch({ countrycode: 'TR', ...(tag ? { tag } : {}) }),
+      rbFetch(tag ? { tag } : {})
+    ]));
+    if (my !== reqId) return;
+    const seen = new Set();
+    const prep = arr => arr.sort((a, b) => b.clickcount - a.clickcount).reduce((o, s) => {
+      const url = s.url_resolved || '', name = (s.name || '').trim(), k = name.toLowerCase();
+      // Sadece https, HLS olmayan, tarayıcının doğrudan çalabildiği MP3/AAC akışlar
+      if (!name || seen.has(k) || !/^https:/i.test(url) || s.hls === 1 || !/^(MP3|AAC|AAC\+)$/i.test(s.codec || '')) return o;
+      seen.add(k);
+      o.push({ name, url, info: [s.codec, s.bitrate ? s.bitrate + ' kbps' : ''].filter(Boolean).join(' · ') });
+      return o;
+    }, []);
+    const tr = prep(lists.filter((_, i) => i % 2 === 0).flat()), wd = prep(lists.filter((_, i) => i % 2).flat());
+    const out = [];
+    for (let i = 0; i < Math.max(tr.length, wd.length); i++) { if (tr[i]) out.push(tr[i]); if (wd[i]) out.push(wd[i]); }
+    const cand = out.slice(0, 36);
+    let top = await probeAll(cand, 16);
+    if (my !== reqId) return;
+    if (!top.length) top = cand.slice(0, 16); // ön yükleme desteklenmiyorsa (ör. iPhone) kontrolsüz liste
+    stationCache.set(key, top);
+    stLoading = false; renderStations(top);
+  } catch {
+    if (my !== reqId) return;
+    stLoading = false; updateStationBar();
+    $('stationList').innerHTML = '<li class="py-6 text-center text-zinc-500">Radyo listesi alınamadı. İnternet bağlantını kontrol edip tekrar dene.</li>';
+  }
+}
+
+function toggleMenu(open) {
+  const show = open ?? $('catMenu').classList.contains('hidden');
+  $('catMenu').classList.toggle('hidden', !show);
+  $('catArrow').textContent = show ? '▴' : '▾';
+}
+function renderControls() {
+  $('catLabel').textContent = genreIdx === 0 ? 'Kategoriler' : GENRES[genreIdx].label;
+  const menu = $('catMenu');
+  menu.innerHTML = '';
+  GENRES.forEach((g, i) => {
+    const b = document.createElement('button');
+    b.textContent = g.label;
+    b.className = 'block w-full rounded-lg px-4 py-3 text-left text-base ' +
+      (i === genreIdx ? 'bg-amber-400 font-semibold text-ink' : 'text-zinc-200 active:bg-zinc-700');
+    b.onclick = () => { genreIdx = i; toggleMenu(false); renderControls(); loadStations(); toggleStationMenu(true); };
+    menu.appendChild(b);
+  });
+}
+$('catToggle').onclick = () => toggleMenu();
+renderControls();
+const IC_PLAY = '<svg class="h-7 w-7" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+const IC_STOP = '<svg class="h-7 w-7" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>';
+function setRadioUI() { $('radioBtn').innerHTML = radio.paused ? IC_PLAY + '<span>Başlat</span>' : IC_STOP + '<span>Durdur</span>'; }
+let wantPlay = false;   // radyo çalmalı ama tarayıcı engellediyse true
+function playRadio() {
+  wantPlay = true;
+  $('radioNote').textContent = '';
+  radio.play().catch(e => {
+    if (e.name === 'AbortError') return;  // başka bir istasyon yüklendi, sorun değil
+    if (e.name === 'NotAllowedError') {
+      $('radioNote').textContent = 'Tarayıcı otomatik çalmayı engelledi. Ekrana bir kez dokun, radyo başlayacak.';
+    } else {
+      wantPlay = false;
+      $('radioNote').textContent = 'Akış açılamadı (' + e.name + '). İstasyon çalışmıyor olabilir, başka birini dene.';
+    }
+  });
+}
+// Engellenen radyo, kullanıcının sonraki dokunuşunda (izinli bir hareket) başlatılır
+document.addEventListener('pointerdown', () => { if (wantPlay && radio.paused && radioUrl) playRadio(); }, true);
+radio.onplaying = () => { $('radioNote').textContent = ''; };
+
+// Katıl düğmesine basılırken (kullanıcı hareketi içinde) ses öğesinin kilidini aç: iPhone/Safari için gerekli
+const SILENT = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+function unlockRadio() {
+  if (radio.getAttribute('src')) return;
+  radio.src = SILENT;
+  radio.play().then(() => { if (radio.src === SILENT) radio.pause(); }).catch(() => {});
+}
+function loadStation(url) { radioUrl = url; radio.src = url; playRadio(); }
+function pushRadio(playing) {
+  socket.emit('radio', { url: radioUrl, name: radioName, playing }, res => {
+    if (res && res.ok) { groupRadio = res.radio; refreshRadioPerm(); renderStations(currentList); return; }
+    $('radioNote').textContent = (res && res.error) || '';
+    if (res && res.radio) { groupRadio = res.radio; following = true; applyGroup(); refreshRadioPerm(); }
+  });
+}
+
+$('radioBtn').onclick = () => {
+  if (!radioUrl) { $('radioNote').textContent = 'Önce bir istasyon seç.'; return; }
+  if (!following) {                              // kişisel dinleme: yalnızca bu cihaz
+    if (radio.paused) playRadio(); else { wantPlay = false; radio.pause(); }
+    return;
+  }
+  if (!canControlGroup()) return;                // grup yayını: grup sahibi / yayını başlatan
+  if (radio.paused) { playRadio(); pushRadio(true); } else { wantPlay = false; radio.pause(); pushRadio(false); }
+};
+let userVol = 0.6;                 // kullanıcının seçtiği ses (sadece bu cihazı etkiler)
+function setVol(v) {
+  userVol = Math.min(1, Math.max(0, Math.round(v * 20) / 20));
+  $('volText').textContent = Math.round(userVol * 100) + '%';
+  $('volRange').value = Math.round(userVol * 100);
+}
+$('volRange').oninput = e => setVol(+e.target.value / 100);   // soldan sağa kaydırmalı ses ayarı
+setVol(0.6); radio.volume = 0.6;
+radio.onplay = radio.onpause = setRadioUI;
+radio.onerror = () => { if (radioUrl) $('radioNote').textContent = 'Akış açılamadı. Adres https mi ve çalışıyor mu?'; };
+
+function applyGroup() {                          // grup yayınını bu cihaza uygula
+  const g = groupRadio;
+  if (!g) return;
+  if (g.url !== radioUrl) { radioUrl = g.url; radio.src = g.url; }
+  radioName = g.name || '';
+  if (g.playing) playRadio(); else { wantPlay = false; radio.pause(); }
+  setRadioUI();
+}
+function onGroupRadio(g) {                       // sunucudan gelen grup yayını
+  groupRadio = g;
+  if (following) applyGroup();                   // kişisel dinleyenler kesilmez, "Katıl" çubuğu görür
+  refreshRadioPerm(); renderStations(currentList);
+}
+socket.on('radio', onGroupRadio);
+$('joinGroupBtn').onclick = () => { following = true; applyGroup(); refreshRadioPerm(); renderStations(currentList); };
+
+// Grup sahibi: gelen paylaşım isteklerini sırayla onaylar / reddeder
+function showNextApproval() {
+  if (!isOwner || !radioQueue.length) { $('approve').classList.add('hidden'); return; }
+  const r = radioQueue[0];
+  $('approveText').textContent = r.user + ' "' + r.name + '" yayınını tüm gruba dinletmek istiyor.';
+  $('approve').classList.remove('hidden');
+}
+const decide = approve => {
+  const r = radioQueue.shift();
+  if (r) socket.emit('radio-decision', { id: r.id, approve });
+  showNextApproval();
+};
+$('approveYes').onclick = () => decide(true);
+$('approveNo').onclick = () => decide(false);
+socket.on('radio-request', r => { radioQueue.push(r); showNextApproval(); });
+socket.on('radio-request-cancel', ({ id }) => { radioQueue = radioQueue.filter(x => x.id !== id); showNextApproval(); });
+socket.on('radio-result', ({ approved, reason }) => {
+  $('radioNote').textContent = approved ? 'Onaylandı, yayın tüm grupta çalıyor.' : (reason || 'Grup sahibi isteği reddetti.');
+  if (approved) { following = true; applyGroup(); refreshRadioPerm(); renderStations(currentList); }
+});
+
+/* ---------- Kim konuşuyor + radyoyu kısma ---------- */
+const HOLD_MS = 500;        // kısa sessizlikte "konuşuyor" durumu sürsün
+const DUCK_HOLD_MS = 1200;  // konuşma bittikten sonra radyo bu kadar süre kısık kalsın
+let actx = null, lastKey = '', lastTalk = 0;
+const meters = new Map();   // id ('me' = sen) -> { analyser, buf, since, last }
+
+function addMeter(id, stream) {
+  if (!actx || meters.has(id)) return;
+  const analyser = actx.createAnalyser();
+  analyser.fftSize = 512;
+  actx.createMediaStreamSource(stream).connect(analyser); // hoparlöre bağlı değil, sadece ölçüm
+  meters.set(id, { analyser, buf: new Uint8Array(analyser.fftSize), since: 0, last: 0 });
+}
+const fmt = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+
+
+setInterval(() => {
+  if (!meters.size) return;
+  const now = Date.now(), speakers = [];
+  meters.forEach((m, id) => {
+    m.analyser.getByteTimeDomainData(m.buf);
+    let sum = 0;
+    for (const v of m.buf) { const x = (v - 128) / 128; sum += x * x; }
+    if (Math.sqrt(sum / m.buf.length) > talkThr()) { if (!m.since) m.since = now; m.last = now; }
+    else if (m.since && now - m.last > HOLD_MS) m.since = 0;
+    if (m.since) speakers.push({ id, name: id === 'me' ? 'Sen' : (peers.get(id)?.name || 'Sürücü'), secs: Math.floor((now - m.since) / 1000) });
+  });
+
+  const key = speakers.map(s => s.id + s.secs).join('|');
+  if (key !== lastKey) { lastKey = key; setSpeaking(speakers); }
+
+  // Biri konuşuyorsa radyo sesini yumuşakça kıs, bitince eski seviyeye döndür
+  if (speakers.length) lastTalk = now;
+  const ducked = now - lastTalk < DUCK_HOLD_MS;
+  const target = userVol * (ducked && CAL.duckOn ? CAL.duck : 1), diff = target - radio.volume;
+  radio.volume = Math.abs(diff) < 0.02 ? target : radio.volume + diff * 0.5;
+  $('duckNote').textContent = ducked && !radio.paused ? 'Konuşma var, radyo kısıldı' : '';
+}, 100);
+
+/* ---------- Giriş / kayıt / şifre sıfırlama ---------- */
+// Bu cihazda en son giriş yapan hesap (yalnızca kullanıcı adı, görünen ad ve fotoğraf; şifre asla saklanmaz)
+const loadQuick = () => { try { const q = JSON.parse(localStorage.getItem('lastAcct') || 'null'); return q && q.u ? q : null; } catch { return null; } };
+let quick = loadQuick(), quickOn = !!quick;
+function remember(u) {
+  if (!u || !u.username) return;
+  quick = { u: u.username, n: [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username, a: u.avatar || '' };
+  try { localStorage.setItem('lastAcct', JSON.stringify(quick)); } catch {}
+}
+function renderQuick() {
+  if (!quick) return;
+  $('qName').textContent = quick.n; $('qUser').textContent = '@' + quick.u;
+  const av = $('qAvatar'); av.innerHTML = '';
+  if (quick.a) { const i = document.createElement('img'); i.src = quick.a; i.alt = ''; i.className = 'h-full w-full object-cover'; av.appendChild(i); }
+  else av.textContent = quick.u.charAt(0).toLocaleUpperCase('tr');
+}
+let authMode = 'login', me = null, resetToken = new URLSearchParams(location.search).get('reset') || '';
+async function api(path, body) {
+  const r = await fetch('/api/' + path, body === undefined ? {} :
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'İstek başarısız.');
+  return j;
+}
+const val = id => $(id).value.trim();
+const showMsg = (m, ok) => { $('authMsg').textContent = m || ''; $('authMsg').className = 'min-h-5 text-sm ' + (ok ? 'text-amber-300' : 'text-red-400'); };
+const TAB_OF = { dash: 'home', join: 'comm', app: 'comm', motor: 'motor', world: 'world', friends: 'friends', social: 'social', settings: 'settings' };
+let inRoom = false;
+function showScreen(n) {
+  ['auth', 'dash', 'join', 'app', 'motor', 'world', 'friends', 'social', 'settings'].forEach(k => $(k).classList.toggle('hidden', k !== n));
+  $('bottomNav').classList.toggle('hidden', n === 'auth');
+  document.querySelectorAll('[data-nav]').forEach(b => {
+    const on = b.dataset.nav === TAB_OF[n];
+    b.classList.toggle('text-amber-400', on); b.classList.toggle('text-zinc-400', !on);
+    b.setAttribute('aria-current', on ? 'page' : 'false');
+  });
+  if (n === 'dash') startDash(); else stopDash();
+  if (n !== 'settings' && testStop) testStop();
+  if (n === 'motor') renderMotor();
+  if (n === 'social') openSocial();
+  if (n === 'settings') { openSettings(); renderPerms(); calUI(); }
+  scrollTo(0, 0);
+}
+/* ---------- Güvenlik sorusu (toplama) ----------
+   Soru sunucudan gelir, cevap giriş / kayıt isteğiyle gönderilir ve sunucuda doğrulanır. Süresi dolan soru kendiliğinden yenilenir. */
+/* ---------- Güvenlik doğrulaması: sayı toplama ----------
+   "6 + 2 = [Toplam]" sorusu sunucudan gelir; cevap giriş / kayıt isteğiyle gönderilir ve sunucuda doğrulanır.
+   Soru CAP_ROT saniyede bir kendiliğinden değişir. */
+const CAP_ROT = 60;
+function capMark(box) {                       // doğru toplam yazılınca yeşil çerçeve + tik (yalnızca görsel)
+  const ok = box._sum >= 0 && box.querySelector('[data-ans]').value.trim() === String(box._sum);
+  box.querySelector('[data-card]').style.boxShadow = ok ? 'inset 0 0 0 2px #5CC48E' : 'inset 0 0 0 1px rgba(255,255,255,.09)';
+  box.querySelector('[data-ok]').classList.toggle('hidden', !ok);
+}
+function capReason(e) {
+  const m = String(e && e.message || '');
+  return e instanceof TypeError ? 'Sunucuya ulaşılamıyor. İnternet bağlantını ve sunucunun açık olduğunu kontrol et.'
+    : (m === 'İstek başarısız.' || m === 'bad') ? 'Sunucu bu soruyu veremiyor. server.js dosyasının güncel olduğundan ve sunucunun yeniden başlatıldığından emin ol.' : m;
+}
+async function loadCaptcha(box) {
+  const q = box.querySelector('[data-q]'), a = box.querySelector('[data-ans]'), er = box.querySelector('[data-err]');
+  box._tok = ''; box._sum = -1; a.value = ''; q.textContent = '…'; er.classList.add('hidden'); capMark(box);
+  try {
+    const c = await api('captcha');
+    if (!c || !c.token) throw new Error('bad');
+    box._tok = c.token; box._at = Date.now(); box._try = 0; box._sum = c.a + c.b; q.textContent = c.a + ' + ' + c.b + ' =';
+  } catch (e) {
+    q.textContent = 'Yüklenemedi'; er.textContent = capReason(e); er.classList.remove('hidden');
+    if ((box._try = (box._try || 0) + 1) <= 5) setTimeout(() => capLoad(box), 3000 * box._try);   // kendiliğinden tekrar dener
+  }
+}
+function capLoad(box) { if (box._busy) return; box._busy = true; loadCaptcha(box).finally(() => { box._busy = false; }); }
+const capBoxes = () => [...document.querySelectorAll('[data-cap]')];
+const refreshCaps = () => capBoxes().forEach(b => { if (!b._tok || (Date.now() - b._at) / 1000 >= CAP_ROT) capLoad(b); });
+function capTick() {                          // her saniye: kalan süre çubuğu; süre dolunca soru değişir
+  capBoxes().forEach(b => {
+    if (!b.offsetParent || !b._tok) return;
+    const left = Math.max(0, CAP_ROT - Math.floor((Date.now() - b._at) / 1000));
+    b.querySelector('[data-timer]').textContent = 'Soru ' + left + ' sn sonra değişir';
+    b.querySelector('[data-bar]').style.width = (left / CAP_ROT * 100) + '%';
+    if (left <= 0) capLoad(b);
+  });
+}
+const capData = box => ({ captchaToken: box._tok || '', captchaAnswer: box.querySelector('[data-ans]').value.trim(), website: box.querySelector('[data-hp]').value });
+function capCheck(box) {                      // gönderim öncesi kontrol; sorun varsa kullanıcıya söyler
+  refreshCaps();
+  if (!box._tok) { showMsg(box.querySelector('[data-err]').textContent || 'Güvenlik sorusu yükleniyor, birkaç saniye sonra tekrar dene.'); return false; }
+  if (!/^\d{1,3}$/.test(box.querySelector('[data-ans]').value.trim())) { showMsg('Güvenlik sorusunun toplamını rakamla yaz.'); return false; }
+  return true;
+}
+capBoxes().forEach(b => {
+  b.querySelector('[data-ans]').addEventListener('input', () => capMark(b));
+  b.querySelector('[data-ref]').onclick = () => { b._try = 0; b._busy = false; capLoad(b); };
+});
+setInterval(capTick, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshCaps(); });
+refreshCaps();
+const showAuth = () => { showScreen('auth'); refreshCaps(); };
+// Sosyal bölüm: React paketi (public/social.bundle.js) ilk gerektiğinde yüklenir ve ekrana bağlanır
+let socialH = null, socialLoading = false;
+function openSocial() {
+  const props = () => ({
+    me, socket, theme: 'dark',
+    onUnread: n => { const b = $('socialBadge'); b.textContent = n > 99 ? '99+' : String(n); b.classList.toggle('hidden', !n); }
+  });
+  if (socialH) return socialH.update(props());
+  if (socialLoading) return;
+  socialLoading = true;
+  const root = $('social-root');
+  root.innerHTML = '<p class="p-6 text-center text-sm text-zinc-400">Yükleniyor…</p>';
+  const sc = document.createElement('script');
+  sc.src = '/social.bundle.js';
+  sc.onload = () => { root.innerHTML = ''; socialH = window.MotoSocial.mount(root, props()); socialLoading = false; };
+  sc.onerror = () => { root.innerHTML = '<p class="p-6 text-center text-sm text-red-300">Sosyal bölüm yüklenemedi. Sayfayı yenileyip tekrar dene.</p>'; socialLoading = false; };
+  document.head.appendChild(sc);
+}
+function enterHome(user) {
+  me = user; remember(user);
+  showScreen('dash');
+  if (!socket.connected) socket.connect();
+  setTimeout(openSocial, 1500);   // arka planda hazırla: okunmamış mesaj rozeti baştan çalışsın
+}
+function setAuthMode(m) {
+  authMode = m; showMsg('');
+  ['login', 'register', 'forgot', 'reset'].forEach(k => $(k + 'Form').classList.toggle('hidden', k !== m));
+  // Hatırlanan hesap varsa giriş ekranı yerine yalnızca şifre soran kart görünür
+  const q = quickOn && !!quick && m === 'login';
+  if (q) renderQuick();
+  $('quickLogin').classList.toggle('hidden', !q);
+  $('loginForm').classList.toggle('hidden', q || m !== 'login');
+  $('authTabs').classList.toggle('hidden', q || m === 'forgot' || m === 'reset');
+  refreshCaps();
+  const on = 'rounded-lg py-3 font-medium bg-amber-400 text-ink', off = 'rounded-lg py-3 font-medium text-zinc-300';
+  $('tabLogin').className = m === 'login' ? on : off;
+  $('tabRegister').className = m === 'register' ? on : off;
+}
+$('qOther').onclick = () => { quickOn = false; $('qPw').value = ''; setAuthMode('login'); };   // mevcut giriş / kayıt ekranına geç
+$('qForgot').onclick = () => setAuthMode('forgot');
+$('quickForm').onsubmit = async e => {
+  e.preventDefault(); showMsg('');
+  const box = $('quickForm').querySelector('[data-cap]');
+  if (!capCheck(box)) return;
+  try { enterHome((await api('login', { login: quick.u, password: $('qPw').value, ...capData(box) })).user); $('qPw').value = ''; }
+  catch (er) { showMsg(er.message); capLoad(box); }
+};
+$('tabLogin').onclick = () => setAuthMode('login');
+$('tabRegister').onclick = () => setAuthMode('register');
+$('toForgot').onclick = () => setAuthMode('forgot');
+document.querySelectorAll('[data-back]').forEach(b => { b.onclick = () => setAuthMode('login'); });
+
+$('loginForm').onsubmit = async e => {
+  e.preventDefault(); showMsg('');
+  const box = $('loginForm').querySelector('[data-cap]');
+  if (!capCheck(box)) return;
+  try { enterHome((await api('login', { login: val('lLogin'), password: $('lPw').value, ...capData(box) })).user); }
+  catch (er) { showMsg(er.message); capLoad(box); }
+};
+$('registerForm').onsubmit = async e => {
+  e.preventDefault(); showMsg('');
+  const box = $('registerForm').querySelector('[data-cap]');
+  if (!capCheck(box)) return;
+  try {
+    enterHome((await api('register', {
+      username: val('rUser'), firstName: val('rFirst'), lastName: val('rLast'), gender: $('rGender').value,
+      bikeBrand: val('rBrand'), bikeModel: val('rModel'), email: val('rEmail'), password: $('rPw').value, ...capData(box)
+    })).user);
+  } catch (er) { showMsg(er.message); capLoad(box); }
+};
+$('forgotForm').onsubmit = async e => {
+  e.preventDefault(); showMsg('');
+  try {
+    await api('forgot', { email: val('fEmail') });
+    showMsg('E-posta adresin kayıtlıysa şifre sıfırlama bağlantısı gönderildi. Gelen kutunu ve spam klasörünü kontrol et.', true);
+  } catch (er) { showMsg(er.message); }
+};
+$('resetForm').onsubmit = async e => {
+  e.preventDefault(); showMsg('');
+  if ($('nPw').value !== $('nPw2').value) return showMsg('Şifreler aynı değil.');
+  try {
+    await api('reset', { token: resetToken, password: $('nPw').value });
+    resetToken = ''; history.replaceState(null, '', '/');
+    setAuthMode('login'); showMsg('Şifren güncellendi. Yeni şifrenle giriş yapabilirsin.', true);
+  } catch (er) { showMsg(er.message); }
+};
+const doLogout = async () => { try { await api('logout', {}); } catch {} location.reload(); };
+$('logoutBtn').onclick = doLogout;
+// Ana sayfadaki çıkış düğmesi: önce evet / hayır sorusu
+const logoutAsk = $('logoutAsk');
+let askYes = null;
+const ask = (msg, yes) => { $('askText').textContent = msg; askYes = yes; logoutAsk.classList.remove('hidden'); };
+$('dashLogout').onclick = () => ask('Çıkış yapılsın mı?', doLogout);
+$('logoutNo').onclick = () => logoutAsk.classList.add('hidden');
+logoutAsk.addEventListener('click', e => { if (e.target === logoutAsk) logoutAsk.classList.add('hidden'); });
+$('logoutYes').onclick = () => { logoutAsk.classList.add('hidden'); if (askYes) askYes(); };
+socket.on('connect_error', e => { if (e.message === 'unauthorized') showAuth(); });
+
+/* ---------- Ayarlar sayfası ---------- */
+const setMsg = (m, ok) => { $('sMsg').textContent = m || ''; $('sMsg').className = 'min-h-6 text-center ' + (ok ? 'text-amber-300' : 'text-red-400'); };
+const FIELDS = { sUser: 'username', sFirst: 'firstName', sLast: 'lastName', sGender: 'gender', sBrand: 'bikeBrand', sModel: 'bikeModel', sEmail: 'email' };
+function openSettings() {
+  for (const [id, k] of Object.entries(FIELDS)) $(id).value = me[k] || '';
+  if (!$('sGender').value) $('sGender').value = 'belirtmek-istemiyorum';
+  $('sCurBox').classList.toggle('hidden', !me.hasPassword);
+  $('sCurPw').value = ''; $('sNewPw').value = ''; setMsg('');
+}
+$('sSave').onclick = async () => {
+  const body = {}, newPw = $('sNewPw').value;
+  for (const [id, k] of Object.entries(FIELDS)) body[k] = $(id).value.trim();
+  if (newPw) body.newPassword = newPw;
+  if (me.hasPassword && (body.email.toLowerCase() !== me.email || newPw)) body.currentPassword = $('sCurPw').value;
+  try {
+    me = (await api('account', body)).user; remember(me);
+    renderProfile();
+    $('sCurPw').value = ''; $('sNewPw').value = '';
+    $('sCurBox').classList.toggle('hidden', !me.hasPassword);
+    setMsg('Kaydedildi.', true);
+  } catch (e) { setMsg(e.message); }
+};
+
+// My Motor sayfası
+function renderMotor() {
+  if (!me) return;
+  $('motoBrand').textContent = me.bikeBrand || '—';
+  $('motoModel').textContent = me.bikeModel || 'Model Bilgisi Yok';
+}
+$('motoEdit').onclick = () => { goTab('settings'); $('accProfile').open = true; };
+
+// --- Bağlantı izinleri ---
+const PERMS = [
+  ['microphone', 'Mikrofon'], ['camera', 'Kamera'], ['geolocation', 'Konum'], ['notifications', 'Bildirimler']
+];
+const askPerm = {
+  microphone: () => navigator.mediaDevices.getUserMedia({ audio: true }).then(st => st.getTracks().forEach(t => t.stop())),
+  camera: () => navigator.mediaDevices.getUserMedia({ video: true }).then(st => st.getTracks().forEach(t => t.stop())),
+  geolocation: () => new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 10000 })),
+  notifications: () => Notification.requestPermission()
+};
+const supported = k => k === 'geolocation' ? !!navigator.geolocation
+  : k === 'notifications' ? 'Notification' in window : !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+async function permState(k) {
+  if (!supported(k)) return 'unsupported';
+  if (k === 'notifications') return Notification.permission === 'default' ? 'prompt' : Notification.permission;
+  try {
+    const st = await navigator.permissions.query({ name: k });
+    st.onchange = renderPerms;
+    return st.state;
+  } catch { return 'unknown'; }
+}
+async function renderPerms() {
+  const ul = $('permList');
+  const rows = await Promise.all(PERMS.map(async ([k, label]) => [k, label, await permState(k)]));
+  ul.innerHTML = '';
+  rows.forEach(([k, label, st]) => {
+    const li = document.createElement('li');
+    li.className = 'flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2';
+    const txt = { granted: 'İzin Verildi', denied: 'Engellendi', prompt: 'Sorulmadı', unknown: 'Bilinmiyor', unsupported: 'Desteklenmiyor' }[st];
+    const color = { granted: 'text-amber-300', denied: 'text-red-400' }[st] || 'text-zinc-500';
+    li.innerHTML = '<div class="min-w-0"><div class="text-sm font-medium"></div><div class="text-xs"></div></div>';
+    li.querySelector('.font-medium').textContent = label;
+    li.querySelector('.text-xs').textContent = txt;
+    li.querySelector('.text-xs').className = 'text-xs ' + color;
+    if (st !== 'granted' && st !== 'unsupported') {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn-sm btn-accent shrink-0'; b.textContent = 'İzin Ver';
+      b.onclick = async () => {
+        $('permMsg').textContent = st === 'denied' ? 'Bu izin engellenmiş. Tarayıcının site ayarlarından izin vermen gerekir.' : '';
+        try { await askPerm[k](); } catch {}
+        renderPerms();
+      };
+      li.appendChild(b);
+    }
+    ul.appendChild(li);
+  });
+}
+
+// --- Telefon kalibrasyonu ---
+function calUI() {
+  $('calTalk').value = CAL.talk + 1; $('calTalkVal').textContent = (CAL.talk + 1) + ' / 10';
+  $('calDuck').value = Math.round(CAL.duck * 100); $('calDuckVal').textContent = '%' + Math.round(CAL.duck * 100);
+  $('calEcho').checked = CAL.echo; $('calNoise').checked = CAL.noise; $('calAgc').checked = CAL.agc;
+  $('calMark').style.left = Math.min(100, talkThr() / 0.12 * 100) + '%';
+}
+$('calTalk').oninput = e => { CAL.talk = +e.target.value - 1; saveCal(); calUI(); };
+$('calDuck').oninput = e => { CAL.duck = +e.target.value / 100; saveCal(); calUI(); };
+[['calEcho', 'echo'], ['calNoise', 'noise'], ['calAgc', 'agc']].forEach(([id, k]) => { $(id).onchange = e => { CAL[k] = e.target.checked; saveCal(); }; });
+$('calReset').onclick = () => { CAL = { ...CAL_DEFAULT }; saveCal(); calUI(); };
+
+let testStop = null;
+$('calTest').onclick = async () => {
+  if (testStop) return testStop();
+  $('calMsg').textContent = '';
+  try {
+    const st = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: CAL.echo, noiseSuppression: CAL.noise, autoGainControl: CAL.agc } });
+    const ac = new (window.AudioContext || window.webkitAudioContext)(), an = ac.createAnalyser(), buf = new Uint8Array(512);
+    an.fftSize = 512;
+    ac.createMediaStreamSource(st).connect(an);
+    let raf = 0, on = true;
+    const tick = () => {
+      an.getByteTimeDomainData(buf);
+      let sum = 0;
+      for (const v of buf) { const x = (v - 128) / 128; sum += x * x; }
+      const rms = Math.sqrt(sum / buf.length);
+      $('calLevel').style.width = Math.min(100, rms / 0.12 * 100) + '%';
+      $('calLevel').className = 'h-full ' + (rms > talkThr() ? 'bg-amber-400' : 'bg-zinc-500');
+      if (on) raf = requestAnimationFrame(tick);
+    };
+    testStop = () => {
+      on = false; cancelAnimationFrame(raf);
+      st.getTracks().forEach(t => t.stop()); ac.close();
+      testStop = null; $('calLevel').style.width = '0%';
+      $('calTest').textContent = 'Mikrofonu Test Et';
+    };
+    $('calTest').textContent = 'Testi Durdur';
+    tick();
+  } catch { $('calMsg').textContent = 'Mikrofon açılamadı. Bağlantı İzinleri bölümünden izni kontrol et.'; }
+};
+
+/* ---------- Profil paneli ---------- */
+const TIPS = [
+  ['Hatırlatıcı', '#EA8621', [
+    'Yola çıkmadan lastik basıncını soğukken kontrol et.',
+    'Zincirin gerginliğine ve yağlamasına bir göz at.',
+    'Fren balatalarını ve fren hidroliği seviyesini kontrol et.',
+    'Aynalarını ve farlarını temizle, aynaları sürüş pozisyonuna göre ayarla.',
+    'Motor yağı seviyesini üreticinin önerdiği yöntemle kontrol et.',
+    'Kask vizörünün temiz ve çiziksiz olduğundan emin ol.',
+    'Yanında ilk yardım çantası ve temel bir alet seti bulundur.',
+    'Telefonunu şarj et, rotanı önceden hazırla; sürerken ekrana bakma.',
+    'Yağmur kıyafetini ve yedek eldivenini çantanda tut.',
+    'Bakım tarihini ve trafik sigortanın bitiş tarihini kontrol et.',
+    'Uzun yolda yakıt molalarını önceden planla.',
+    'Stop, sinyal ve fren lambalarının çalıştığını kontrol et.'
+  ]],
+  ['Önemli Bilgi', '#5BC0BE', [
+    'Darbe almış kask, dışarıdan sağlam görünse bile yenilenmelidir.',
+    'Üreticiler kaskın yaklaşık beş yılda bir yenilenmesini önerir.',
+    'Lastikteki dört haneli kod, üretim haftasını ve yılını gösterir.',
+    'Islak zeminde fren mesafesi belirgin biçimde uzar.',
+    'Yağmurun ilk dakikalarında yol, biriken yağ nedeniyle çok kaygan olur.',
+    'Yol çizgileri, rögar kapakları ve metal plakalar ıslakken çok kaygandır.',
+    'Frenleme gücünün büyük kısmı ön frenden gelir; ikisini birlikte kullan.',
+    'Hava sıcak olsa da hızlı sürüşte rüzgâr vücudu soğutur; katmanlı giyin.',
+    'Gece görüş mesafen kısalır; hızını farlarının aydınlattığı mesafeye göre ayarla.',
+    'Uzun yolda yaklaşık iki saatte bir mola vermek dikkatini korur.',
+    'Alkol ve bazı ilaçlar tepki süreni uzatır; sürmeden önce kullanma.',
+    'Doğru beden kask sıkı oturur ama baskı yapmaz.'
+  ]],
+  ['Güvenlik', '#F2785C', [
+    'Kask, eldiven, mont ve botla tam teçhizat sür.',
+    'Virajdan önce yavaşla; viraj içinde sert fren yapma.',
+    'Şerit değiştirmeden önce omzunun üzerinden kör noktaya bak.',
+    'Kavşaklarda diğer sürücülerin seni görmediğini varsay.',
+    'Öndeki araçla en az üç saniyelik mesafe bırak; yağmurda artır.',
+    'Gözün gideceğin yöne baksın, kaçınmak istediğin engele değil.',
+    'Açık renkli ya da yansıtıcı kıyafet seni daha görünür kılar.',
+    'Büyük araçların kör noktasında ve hemen arkasında gitme.',
+    'Yolcu varken fren ve dönüş mesafeleri değişir; yolcuna bilgi ver.',
+    'Grup sürüşünde şaşırtmalı sıra kullan, yan yana gitme.',
+    'Yorgunken, uykusuzken ya da sinirliyken sürme.',
+    'Hızını yola, trafiğe ve hava durumuna göre ayarla.'
+  ]]
+];
+// Gün değişince (gece yarısı) notlar değişir; gün boyu sabit kalır
+const dayIndex = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5); };
+let lastTipDay = -1;
+function renderTips() {
+  const d = dayIndex();
+  if (d === lastTipDay) return;
+  lastTipDay = d;
+  const ul = $('tips');
+  ul.innerHTML = '';
+  TIPS.forEach(([label, color, list], k) => {
+    const li = document.createElement('li');
+    li.className = 'flex gap-2';
+    li.innerHTML = '<span class="mt-1.5 h-2 w-2 shrink-0 rounded-full"></span><p class="text-[13px] leading-snug"><b class="font-semibold"></b> <span class="text-zinc-300"></span></p>';
+    li.children[0].style.background = color;
+    li.querySelector('b').textContent = label + ':';
+    li.querySelector('span.text-zinc-300').textContent = list[(d * 5 + k * 4) % list.length];
+    ul.appendChild(li);
+  });
+}
+
+function renderProfile() {
+  if (!me) return;
+  const h = new Date().getHours();
+  const g = h >= 5 && h < 12 ? ['Günaydın', 'Güne enerjiyle başla, yolların açık olsun!']
+    : h >= 12 && h < 18 ? ['İyi Günler', 'Umarım gün güzel geçiyordur. Keyifli sürüşler!']
+    : h >= 18 && h < 22 ? ['İyi Akşamlar', 'Günün yorgunluğunu yolda at ama dikkatli sür!']
+    : ['İyi Geceler', 'Gece sürüşünde dikkatli ol, iyi dinlenmeler!'];
+  $('greetHello').textContent = g[0];
+  $('greetName').textContent = me.firstName || me.username;
+  $('greetMsg').textContent = g[1];
+  const img = $('avatarImg'), ini = $('avatarInit');
+  if (me.avatar) { img.src = me.avatar; img.classList.remove('hidden'); ini.classList.add('hidden'); }
+  else {
+    img.classList.add('hidden'); ini.classList.remove('hidden');
+    ini.textContent = [me.firstName || me.username, me.lastName].filter(Boolean).map(x => x[0]).join('').toLocaleUpperCase('tr');
+  }
+}
+$('avatarBtn').onclick = () => $('avatarFile').click();
+$('avatarFile').onchange = async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    const bmp = await createImageBitmap(f), s = Math.min(bmp.width, bmp.height), c = document.createElement('canvas');
+    c.width = c.height = 192;
+    c.getContext('2d').drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, 192, 192);
+    me = (await api('avatar', { image: c.toDataURL('image/jpeg', 0.82) })).user; remember(me);
+    renderProfile();
+  } catch (er) { $('greetMsg').textContent = er.message || 'Fotoğraf yüklenemedi.'; }
+};
+
+// --- Hava durumu (Open-Meteo, ücretsiz, anahtarsız) ---
+const WX = {
+  0: ['Açık', '☀️'], 1: ['Çoğunlukla Açık', '🌤️'], 2: ['Parçalı Bulutlu', '⛅'], 3: ['Kapalı', '☁️'],
+  45: ['Sisli', '🌫️'], 48: ['Kırağılı Sis', '🌫️'],
+  51: ['Hafif Çisenti', '🌦️'], 53: ['Çisenti', '🌦️'], 55: ['Yoğun Çisenti', '🌧️'], 56: ['Dondurucu Çisenti', '🌧️'], 57: ['Dondurucu Çisenti', '🌧️'],
+  61: ['Hafif Yağmur', '🌦️'], 63: ['Yağmurlu', '🌧️'], 65: ['Kuvvetli Yağmur', '🌧️'], 66: ['Dondurucu Yağmur', '🌧️'], 67: ['Dondurucu Yağmur', '🌧️'],
+  71: ['Hafif Kar', '🌨️'], 73: ['Karlı', '🌨️'], 75: ['Yoğun Kar', '❄️'], 77: ['Kar Taneleri', '🌨️'],
+  80: ['Hafif Sağanak', '🌦️'], 81: ['Sağanak', '🌧️'], 82: ['Şiddetli Sağanak', '⛈️'], 85: ['Kar Sağanağı', '🌨️'], 86: ['Yoğun Kar Sağanağı', '❄️'],
+  95: ['Gök Gürültülü Fırtına', '⛈️'], 96: ['Dolu ve Fırtına', '⛈️'], 99: ['Şiddetli Dolu ve Fırtına', '⛈️']
+};
+const wxInfo = c => WX[c] || ['Bilinmiyor', '🌡️'];
+let wxBusy = false, wxHas = false;
+
+function getLoc(fresh) {
+  if (!fresh) try { const sv = JSON.parse(localStorage.getItem('wxloc') || 'null'); if (sv) return Promise.resolve(sv); } catch {}
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej({ loc: true, msg: 'Bu cihaz konum bilgisini desteklemiyor. Şehir yazarak hava durumunu görebilirsin.' });
+    navigator.geolocation.getCurrentPosition(
+      p => res({ lat: p.coords.latitude, lon: p.coords.longitude, name: '' }),
+      () => rej({ loc: true, msg: 'Konum izni verilmedi. Şehir yazarak hava durumunu görebilirsin.' }),
+      { timeout: 8000, maximumAge: fresh ? 0 : 900000 });
+  });
+}
+// Konumun bulunduğu il (ters coğrafi kodlama); aynı ~1 km'lik alan için sonuç önbellekten gelir
+async function cityName(lat, lon) {
+  const key = lat.toFixed(2) + ',' + lon.toFixed(2);
+  try { const c = JSON.parse(localStorage.getItem('wxcity') || 'null'); if (c && c.key === key) return c.name; } catch {}
+  try {
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 6000);
+    const r = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?' +
+      new URLSearchParams({ latitude: lat, longitude: lon, localityLanguage: 'tr' }), { signal: ctl.signal });
+    clearTimeout(t);
+    const j = await r.json();
+    const name = String(j.principalSubdivision || j.city || j.locality || '').replace(/\s+(Province|İli|Ili)$/i, '').trim();
+    if (name) { try { localStorage.setItem('wxcity', JSON.stringify({ key, name })); } catch {} }
+    return name;
+  } catch { return ''; }
+}
+function wxFallback(msg) {
+  $('wxCity').textContent = 'Konum Seçilmedi';
+  $('wxFbMsg').textContent = msg;
+  $('wxFallback').classList.remove('hidden');
+  $('wxMain').classList.add('hidden'); $('wxHours').classList.add('hidden');
+}
+function paintWeather(j, loc) {
+  const c = j.current, [desc, icon] = wxInfo(c.weather_code);
+  $('wxFallback').classList.add('hidden');
+  $('wxMain').classList.remove('hidden'); $('wxHours').classList.remove('hidden');
+  $('wxIcon').textContent = icon;
+  $('wxTemp').textContent = Math.round(c.temperature_2m) + '°';
+  $('wxCity').textContent = loc.name || 'Konumum';
+  $('wxDesc').textContent = desc;
+  $('wxMeta').textContent = 'Hissedilen ' + Math.round(c.apparent_temperature) + '° · Rüzgâr ' + Math.round(c.wind_speed_10m) + ' km/sa';
+  const hr = j.hourly, now = c.time.slice(0, 13);
+  let i = hr.time.findIndex(t => t.startsWith(now));
+  if (i < 0) i = 0;
+  const box = $('wxHours');
+  box.innerHTML = '';
+  for (let k = 1; k <= 6 && i + k < hr.time.length; k++) {
+    const x = i + k, d = document.createElement('div');
+    d.className = 'min-w-0 leading-tight';
+    d.innerHTML = '<div class="text-[11px] text-zinc-400"></div><div class="text-base leading-none"></div><div class="text-[13px] font-medium"></div><div class="text-[10px] text-zinc-500"></div>';
+    d.children[0].textContent = hr.time[x].slice(11, 16);
+    d.children[1].textContent = wxInfo(hr.weather_code[x])[1];
+    d.children[2].textContent = Math.round(hr.temperature_2m[x]) + '°';
+    d.children[3].textContent = '%' + Math.round(hr.precipitation_probability[x] || 0);
+    box.appendChild(d);
+  }
+  wxHas = true;
+  const t = new Date();
+  $('wxStamp').textContent = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ' güncellendi · 5 dakikada bir yenilenir';
+}
+async function loadWeather(fresh) {
+  if (wxBusy) return;
+  wxBusy = true;
+  $('wxRefreshIc').classList.add('animate-spin');
+  try {
+    const loc = await getLoc(fresh === true);
+    const q = new URLSearchParams({
+      latitude: loc.lat, longitude: loc.lon, timezone: 'auto', forecast_days: 2, wind_speed_unit: 'kmh',
+      current: 'temperature_2m,apparent_temperature,weather_code,wind_speed_10m',
+      hourly: 'temperature_2m,weather_code,precipitation_probability'
+    });
+    const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 10000);
+    const [r, city] = await Promise.all([                      // hava verisi ve il adı birlikte alınır
+      fetch('https://api.open-meteo.com/v1/forecast?' + q, { signal: ctl.signal }),
+      loc.name ? loc.name : cityName(loc.lat, loc.lon)
+    ]);
+    clearTimeout(t);
+    if (!r.ok) throw new Error('weather');
+    loc.name = city;
+    paintWeather(await r.json(), loc);
+  } catch (e) {
+    if (e && e.loc) wxFallback(e.msg);
+    else if (wxHas) $('wxStamp').textContent = 'güncellenemedi, tekrar denenecek';
+    else $('wxDesc').textContent = 'Hava Durumu Alınamadı';
+  } finally { wxBusy = false; $('wxRefreshIc').classList.remove('animate-spin'); }
+}
+$('wxCityBtn').onclick = async () => {
+  const name = $('wxCityInput').value.trim();
+  if (!name) return;
+  try {
+    const r = await fetch('https://geocoding-api.open-meteo.com/v1/search?' + new URLSearchParams({ name, count: 1, language: 'tr', format: 'json' }));
+    const g = ((await r.json()).results || [])[0];
+    if (!g) return wxFallback('Şehir bulunamadı. Yazımı kontrol edip tekrar dene.');
+    const il = g.country_code === 'TR' && g.admin1 ? g.admin1 : g.name;   // Türkiye'de ilçe yazılsa da il gösterilir
+    localStorage.setItem('wxloc', JSON.stringify({ lat: g.latitude, lon: g.longitude, name: il }));
+    loadWeather();
+  } catch { wxFallback('Şehir aranamadı. Bağlantını kontrol edip tekrar dene.'); }
+};
+$('wxUseGeo').onclick = () => { try { localStorage.removeItem('wxloc'); } catch {} loadWeather(true); };
+$('wxLocBtn').onclick = () => { try { localStorage.removeItem('wxloc'); } catch {} loadWeather(true); };   // konumu yeniden al
+$('wxRefreshBtn').onclick = () => loadWeather();                                                          // aynı konumda havayı yenile
+
+// --- Gruplarım ---
+function renderGroups() {
+  const ul = $('myGroups');
+  ul.innerHTML = '';
+  // Yalnızca şu an açık olan gruplar gösterilir; kapanan grup listeden kendiliğinden düşer (geçmiş tutulmaz)
+  const list = ((me && me.groups) || []).filter(g => lastRooms.some(r => r.key === g.key));
+  if (!list.length) {
+    ul.innerHTML = '<li class="text-sm text-zinc-500">Şu an aktif bir grubun yok. Gruplara göz atabilir ya da yeni bir grup oluşturabilirsin.</li>';
+    return;
+  }
+  list.forEach(g => {
+    const live = lastRooms.find(r => r.key === g.key);
+    const li = document.createElement('li'), b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'flex w-full items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2 text-left';
+    b.innerHTML = '<span class="min-w-0 flex-1 truncate text-sm font-medium"></span><span class="shrink-0 text-xs"></span>';
+    b.children[0].textContent = g.name;
+    b.children[1].textContent = live.count >= live.max ? 'Dolu' : 'Aktif · ' + live.count + ' Kişi';
+    b.children[1].className += ' text-amber-300';
+    b.onclick = () => { if (inRoom) return goTab('comm'); showScreen('join'); selectRoom(live); };
+    li.appendChild(b); ul.appendChild(li);
+  });
+}
+
+// Üst kuşak: tarih - saat (saniye saniye işler)
+function tickClock() {
+  const d = new Date();
+  $('dashDate').textContent = d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  $('dashClock').textContent = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+}
+$('dashSettings').onclick = () => goTab('settings');
+let dashTimers = [];
+function startDash() {
+  stopDash();
+  tickClock(); renderProfile(); renderTips(); renderGroups(); loadWeather();
+  dashTimers = [setInterval(() => { renderProfile(); renderTips(); }, 60000), setInterval(loadWeather, 300000), setInterval(tickClock, 1000)];
+}
+function stopDash() { dashTimers.forEach(clearInterval); dashTimers = []; }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && dashTimers.length) { tickClock(); renderProfile(); renderTips(); loadWeather(); } });
+function goTab(t) {
+  if (t === 'comm') return showScreen(inRoom ? 'app' : 'join');   // grupta isen gruba, değilsen grup listesine
+  showScreen({ home: 'dash', motor: 'motor', world: 'world', friends: 'friends', social: 'social', settings: 'settings' }[t]);
+}
+document.querySelectorAll('[data-nav]').forEach(b => { b.onclick = () => goTab(b.dataset.nav); });
+$('toGroups').onclick = () => goTab('comm');
+// Klavye açıkken alt çubuk gizlenir (yer kaplamasın)
+document.addEventListener('focusin', e => {
+  if (e.target.matches('input:not([type=range]):not([type=checkbox]),textarea,select')) $('bottomNav').classList.add('kb');
+});
+document.addEventListener('focusout', () => $('bottomNav').classList.remove('kb'));
+
+/* ---------- Grup ayarları ---------- */
+const gMsg = (m, ok) => { $('gMsg').textContent = m || ''; $('gMsg').className = 'min-h-5 text-center text-sm ' + (ok ? 'text-amber-300' : 'text-red-400'); };
+function fillGSet() {
+  $('gVoice').value = Math.round(GP.voice * 100); $('gVoiceVal').textContent = '%' + Math.round(GP.voice * 100);
+  $('gDuckOn').checked = CAL.duckOn; $('gBeep').checked = GP.beep; $('gWake').checked = GP.wake;
+  $('gOwner').classList.toggle('hidden', !isOwner); $('gNote').classList.toggle('hidden', isOwner);
+  $('gLocked').checked = gset.locked; $('gAllowReq').checked = gset.allowReq; $('gMax').value = String(gset.max);
+}
+$('gearGroup').onclick = () => { fillGSet(); gMsg(''); $('gset').classList.remove('hidden'); };
+$('gClose').onclick = () => $('gset').classList.add('hidden');
+$('gVoice').oninput = e => {
+  GP.voice = +e.target.value / 100; saveGP();
+  peers.forEach(p => { p.audio.volume = GP.voice; });
+  $('gVoiceVal').textContent = '%' + e.target.value;
+};
+$('gDuckOn').onchange = e => { CAL.duckOn = e.target.checked; saveCal(); };
+$('gBeep').onchange = e => { GP.beep = e.target.checked; saveGP(); };
+$('gWake').onchange = async e => {
+  GP.wake = e.target.checked; saveGP();
+  if (GP.wake) keepAwake(); else { try { await wake?.release(); } catch {} wake = null; }
+};
+function setGroup(patch, okMsg) {
+  socket.emit('group-settings', patch, res => {
+    if (res && res.ok) {
+      gset = res.settings; fillGSet(); gMsg(okMsg, true);
+      if (patch.allowReq === false) { radioQueue = []; showNextApproval(); }
+    } else { fillGSet(); gMsg((res && res.error) || 'Kaydedilemedi.'); }
+  });
+}
+$('gLocked').onchange = e => setGroup({ locked: e.target.checked }, e.target.checked ? 'Grup yeni üyelere kapatıldı.' : 'Grup yeni üyelere açıldı.');
+$('gAllowReq').onchange = e => setGroup({ allowReq: e.target.checked }, e.target.checked ? 'Paylaşım istekleri açıldı.' : 'Paylaşım istekleri kapatıldı.');
+$('gMax').onchange = e => setGroup({ max: +e.target.value }, 'Azami kişi sayısı güncellendi.');
+$('gPwBtn').onclick = () => {
+  const pw = $('gPw').value;
+  if (pw.length < 4) return gMsg('Şifre en az 4 karakter olmalı.');
+  setGroup({ password: pw }, 'Grup şifresi değiştirildi.');
+  $('gPw').value = '';
+};
+socket.on('group-settings', g => { gset = g; if (!$('gset').classList.contains('hidden')) fillGSet(); });
+
+/* ---------- Grup listesi, grup açma, gruba katılma ---------- */
+let wake = null, entering = false, selectedRoom = '', lastRooms = [];
+async function keepAwake() { if (!GP.wake) return; try { wake = await navigator.wakeLock.request('screen'); } catch {} }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && local) keepAwake(); });
+
+function selectRoom(r) {
+  if (!r) return;
+  selectedRoom = r.key;
+  $('pwRoom').textContent = r.name;
+  $('pwBox').classList.remove('hidden');
+  $('joinPw').value = ''; clearErr();
+  renderRooms(lastRooms);
+  $('joinPw').focus();
+}
+function renderRooms(list) {
+  if (selectedRoom && !list.some(r => r.key === selectedRoom)) {
+    selectedRoom = ''; $('pwBox').classList.add('hidden');
+  }
+  const ul = $('roomList');
+  ul.innerHTML = '';
+  if (!list.length) {
+    ul.innerHTML = '<li class="rounded-xl bg-surface px-4 py-4 text-zinc-500">Henüz açık grup yok. İlk grubu sen aç.</li>';
+    return;
+  }
+  list.forEach(r => {
+    const full = r.count >= r.max, sel = r.key === selectedRoom;
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.className = 'w-full flex items-center justify-between rounded-xl px-4 py-4 text-left ' +
+      (sel ? 'bg-amber-400 text-ink' : 'bg-surface') + (full ? ' opacity-50' : '');
+    b.innerHTML = '<span class="text-base font-medium"></span><span class="text-sm"></span>';
+    b.children[0].textContent = r.name;
+    b.children[1].textContent = (full ? 'Dolu' : r.count + '/' + r.max + ' Kişi') + (r.locked ? ' · Kilitli' : '');
+    b.onclick = () => selectRoom(r);
+    li.appendChild(b); ul.appendChild(li);
+  });
+}
+socket.on('rooms', list => { lastRooms = list; renderRooms(list); renderGroups(); });
+
+// event: 'create' (yeni grup) ya da 'join' (var olan gruba şifreyle)
+async function enter(event, payload, errId) {
+  if (entering) return;
+  entering = true; clearErr();
+  unlockRadio();
+  const fail = msg => { entering = false; showErr(msg, errId); };
+
+  if (!navigator.mediaDevices?.getUserMedia) return fail('Mikrofon için HTTPS gerekli (localhost hariç).');
+  actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+  actx.resume();
+  try {
+    local = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: CAL.echo, noiseSuppression: CAL.noise, autoGainControl: CAL.agc }
+    });
+  } catch { return fail('Mikrofon izni verilmedi. Tarayıcı ayarlarından izin ver.'); }
+
+  socket.emit(event, payload, res => {
+    if (res.error) { local.getTracks().forEach(t => t.stop()); local = null; return fail(res.error); }
+    inRoom = true; showScreen('app');
+    $('roomTitle').textContent = res.room;
+    ownerId = res.ownerId; isOwner = ownerId === socket.id;
+    if (res.gset) gset = res.gset;
+    res.peers.forEach(p => { const q = createPeer(p.id, p.name); q.mic = p.mic !== false; q.spk = p.spk !== false; call(p.id); });
+    if (res.radio) onGroupRadio(res.radio); else refreshRadioPerm();
+    addMeter('me', local);
+    setMode('open'); switchTab('comm'); renderPeers(); keepAwake(); sendStatus();
+  });
+}
+
+$('joinBtn').onclick = () => {
+  if (!selectedRoom) return showErr('Önce listeden bir grup seç.', 'joinErr');
+  enter('join', { room: selectedRoom, password: $('joinPw').value }, 'joinErr');
+};
+$('createBtn').onclick = () => {
+  const room = $('newRoom').value.trim(), pw = $('newPw').value;
+  if (!room) return showErr('Bir grup adı gir.', 'createErr');
+  if (pw.length < 4) return showErr('Şifre en az 4 karakter olmalı.', 'createErr');
+  enter('create', { room, password: pw }, 'createErr');
+};
+$('joinPw').addEventListener('keydown', e => e.key === 'Enter' && $('joinBtn').click());
+$('newPw').addEventListener('keydown', e => e.key === 'Enter' && $('createBtn').click());
+/* ---------- Grup sahibi işlemleri ve bildirimler ---------- */
+function showNotice(msg) {
+  if (local) local.getTracks().forEach(t => t.stop());
+  radio.pause();
+  $('noticeText').textContent = msg;
+  $('notice').classList.remove('hidden');
+}
+$('noticeBtn').onclick = () => location.reload();
+socket.on('kicked', () => showNotice('Grup sahibi seni gruptan çıkardı.'));
+socket.on('room-closed', () => showNotice(isOwner ? 'Grup silindi.' : 'Grup sahibi grubu sildi.'));
+socket.on('owner-changed', ({ id }) => { ownerId = id; isOwner = id === socket.id; if (!isOwner) radioQueue = []; showNextApproval(); renderPeers(); refreshRadioPerm(); renderStations(currentList); });
+socket.on('disconnect', () => { if (local) showNotice('Sunucu bağlantısı koptu.'); });
+$('closeBtn').onclick = () => ask('Grup silinsin mi? Herkesin bağlantısı kesilecek.', () => socket.emit('close-room'));
+$('leaveBtn').onclick = () => ask('Gruptan ayrılınsın mı?', () => location.reload()); // soket kapanır, sunucu gruptan çıkarır
+
+// Açılış: sıfırlama bağlantısıysa yeni şifre ekranı; oturum varsa gruplar, yoksa giriş / kayıt
+(async () => {
+  if (resetToken) { setAuthMode('reset'); showAuth(); return; }
+  setAuthMode('login');
+  try { enterHome((await api('me')).user); } catch { showAuth(); }
+})();
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+</script>
+</body>
+</html>
