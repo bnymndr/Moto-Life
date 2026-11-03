@@ -15,7 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
 <script>
-tailwind.config = { theme: { extend: { colors: {
+tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
   amber: { 300: '#F2A64E', 400: '#EA8621', 500: '#D4731A' },
   zinc: { 200: '#E6E1D8', 300: '#C9D0D6', 400: '#93A4B2', 500: '#667A8A', 600: '#44586A', 700: '#2A3B4B', 800: '#1B2B3A' },
   surface: 'rgba(255,255,255,0.055)',
@@ -90,12 +90,17 @@ tailwind.config = { theme: { extend: { colors: {
     <form id="quickForm" class="flex w-full flex-col gap-3">
       <input id="qPw" class="field" type="password" autocomplete="current-password" placeholder="Şifre" required>
       <div data-cap class="relative space-y-1.5">
-        <p class="text-xs text-zinc-400">Güvenlik Doğrulaması</p>
+        <div class="flex items-center justify-between text-xs text-zinc-400"><span>Güvenlik Doğrulaması</span><span data-timer>…</span></div>
         <div class="flex items-center gap-2">
-          <div class="flex h-[3.1rem] min-w-0 flex-1 items-center justify-center rounded-xl bg-white/[.055] road text-2xl font-semibold" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)"><span data-q>…</span></div>
-          <input data-ans class="field !w-24 text-center" type="text" name="captcha-answer" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="Sonuç" aria-label="Güvenlik Sorusu Cevabı" required>
-          <button data-ref type="button" aria-label="Soruyu Yenile" class="flex h-[3.1rem] w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-amber-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button>
+          <div data-card class="flex h-[3.4rem] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-white/[.055] px-2 road text-2xl font-semibold" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)">
+            <span data-q class="whitespace-nowrap">…</span>
+            <input data-ans class="h-10 w-24 rounded-lg bg-white/10 px-1 text-center text-xl text-[inherit] outline-none placeholder:text-sm placeholder:font-normal focus:ring-2 focus:ring-amber-400" type="text" name="captcha-answer" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="Toplam" aria-label="Toplam" required>
+            <svg data-ok class="hidden h-6 w-6 shrink-0" style="color:#5CC48E" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+          </div>
+          <button data-ref type="button" aria-label="Soruyu Yenile" class="flex h-[3.4rem] w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-amber-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button>
         </div>
+        <div class="h-1 overflow-hidden rounded-full bg-white/10"><div data-bar class="h-full w-full bg-amber-400"></div></div>
+        <p data-err class="hidden text-xs leading-snug text-red-300"></p>
         <input data-hp type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
       </div>
       <button class="btn" type="submit">Giriş Yap</button>
@@ -112,14 +117,19 @@ tailwind.config = { theme: { extend: { colors: {
     <input id="lLogin" class="field" autocomplete="username" autocapitalize="none" placeholder="Kullanıcı Adı veya E-posta" required>
     <input id="lPw" class="field" type="password" autocomplete="current-password" placeholder="Şifre" required>
     <div data-cap class="relative space-y-1.5">
-        <p class="text-xs text-zinc-400">Güvenlik Doğrulaması</p>
-        <div class="flex items-center gap-2">
-          <div class="flex h-[3.1rem] min-w-0 flex-1 items-center justify-center rounded-xl bg-white/[.055] road text-2xl font-semibold" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)"><span data-q>…</span></div>
-          <input data-ans class="field !w-24 text-center" type="text" name="captcha-answer" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="Sonuç" aria-label="Güvenlik Sorusu Cevabı" required>
-          <button data-ref type="button" aria-label="Soruyu Yenile" class="flex h-[3.1rem] w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-amber-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button>
+      <div class="flex items-center justify-between text-xs text-zinc-400"><span>Güvenlik Doğrulaması</span><span data-timer>…</span></div>
+      <div class="flex items-center gap-2">
+        <div data-card class="flex h-[3.4rem] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-white/[.055] px-2 road text-2xl font-semibold" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)">
+          <span data-q class="whitespace-nowrap">…</span>
+          <input data-ans class="h-10 w-24 rounded-lg bg-white/10 px-1 text-center text-xl text-[inherit] outline-none placeholder:text-sm placeholder:font-normal focus:ring-2 focus:ring-amber-400" type="text" name="captcha-answer" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="Toplam" aria-label="Toplam" required>
+          <svg data-ok class="hidden h-6 w-6 shrink-0" style="color:#5CC48E" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
         </div>
-        <input data-hp type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+        <button data-ref type="button" aria-label="Soruyu Yenile" class="flex h-[3.4rem] w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-amber-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button>
       </div>
+      <div class="h-1 overflow-hidden rounded-full bg-white/10"><div data-bar class="h-full w-full bg-amber-400"></div></div>
+      <p data-err class="hidden text-xs leading-snug text-red-300"></p>
+      <input data-hp type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+    </div>
     <button class="btn" type="submit">Giriş Yap</button>
     <button id="toForgot" class="link self-center" type="button">Şifremi Unuttum</button>
   </form>
@@ -142,14 +152,19 @@ tailwind.config = { theme: { extend: { colors: {
     <input id="rEmail" class="field" type="email" autocomplete="email" placeholder="E-posta" required>
     <input id="rPw" class="field" type="password" autocomplete="new-password" placeholder="Şifre (en az 6 karakter)" required>
     <div data-cap class="relative space-y-1.5">
-        <p class="text-xs text-zinc-400">Güvenlik Doğrulaması</p>
-        <div class="flex items-center gap-2">
-          <div class="flex h-[3.1rem] min-w-0 flex-1 items-center justify-center rounded-xl bg-white/[.055] road text-2xl font-semibold" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)"><span data-q>…</span></div>
-          <input data-ans class="field !w-24 text-center" type="text" name="captcha-answer" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="Sonuç" aria-label="Güvenlik Sorusu Cevabı" required>
-          <button data-ref type="button" aria-label="Soruyu Yenile" class="flex h-[3.1rem] w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-amber-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button>
+      <div class="flex items-center justify-between text-xs text-zinc-400"><span>Güvenlik Doğrulaması</span><span data-timer>…</span></div>
+      <div class="flex items-center gap-2">
+        <div data-card class="flex h-[3.4rem] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-white/[.055] px-2 road text-2xl font-semibold" style="box-shadow:inset 0 0 0 1px rgba(255,255,255,.09)">
+          <span data-q class="whitespace-nowrap">…</span>
+          <input data-ans class="h-10 w-24 rounded-lg bg-white/10 px-1 text-center text-xl text-[inherit] outline-none placeholder:text-sm placeholder:font-normal focus:ring-2 focus:ring-amber-400" type="text" name="captcha-answer" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" enterkeyhint="done" placeholder="Toplam" aria-label="Toplam" required>
+          <svg data-ok class="hidden h-6 w-6 shrink-0" style="color:#5CC48E" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
         </div>
-        <input data-hp type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+        <button data-ref type="button" aria-label="Soruyu Yenile" class="flex h-[3.4rem] w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-amber-300 active:bg-white/20"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-refresh"/></svg></button>
       </div>
+      <div class="h-1 overflow-hidden rounded-full bg-white/10"><div data-bar class="h-full w-full bg-amber-400"></div></div>
+      <p data-err class="hidden text-xs leading-snug text-red-300"></p>
+      <input data-hp type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+    </div>
     <button class="btn" type="submit">Kayıt Ol</button>
   </form>
 
@@ -315,6 +330,10 @@ tailwind.config = { theme: { extend: { colors: {
   </section>
 </main>
 
+<main id="social" class="hidden mx-auto flex h-[100dvh] max-w-md flex-col pb-[var(--nav)] pt-[calc(0.75rem+env(safe-area-inset-top))] md:max-w-4xl">
+  <h1 class="road px-4 text-3xl font-bold leading-none">Sosyal</h1>
+  <div id="social-root" class="min-h-0 flex-1"></div>
+</main>
 <main id="settings" class="hidden mx-auto min-h-[100dvh] max-w-md space-y-3 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+1rem)]">
   <h1 class="road text-3xl font-bold">Ayarlar</h1>
 
@@ -477,9 +496,10 @@ tailwind.config = { theme: { extend: { colors: {
       <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe"/></svg>
       <span class="text-center text-[10px] leading-tight">Açık Dünya</span>
     </button>
-    <button type="button" data-nav="friends" aria-label="Arkadaşlar" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
-      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-users"/></svg>
-      <span class="text-center text-[10px] leading-tight">Arkadaşlar</span>
+    <button type="button" data-nav="social" aria-label="Sosyal" class="relative flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-social"/></svg>
+      <span class="text-center text-[10px] leading-tight">Sosyal</span>
+      <span id="socialBadge" class="absolute right-2 top-1 hidden min-w-[1.1rem] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-[1.1rem] text-white"></span>
     </button>
   </div>
 </nav>
@@ -528,6 +548,7 @@ tailwind.config = { theme: { extend: { colors: {
 <symbol id="i-comm" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
 <symbol id="i-moto" viewBox="0 0 24 24"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-6h6l4 6"/><path d="M14 11l-1-4h3"/><path d="M7.5 11H11"/></symbol>
 <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+<symbol id="i-social" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.7-.8L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></symbol>
 <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
 <symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol></svg>
 <div id="gset" class="hidden fixed inset-0 z-50 flex items-end justify-center bg-ink/70 sm:items-center">
@@ -1157,10 +1178,10 @@ async function api(path, body) {
 }
 const val = id => $(id).value.trim();
 const showMsg = (m, ok) => { $('authMsg').textContent = m || ''; $('authMsg').className = 'min-h-5 text-sm ' + (ok ? 'text-amber-300' : 'text-red-400'); };
-const TAB_OF = { dash: 'home', join: 'comm', app: 'comm', motor: 'motor', world: 'world', friends: 'friends', settings: 'settings' };
+const TAB_OF = { dash: 'home', join: 'comm', app: 'comm', motor: 'motor', world: 'world', friends: 'friends', social: 'social', settings: 'settings' };
 let inRoom = false;
 function showScreen(n) {
-  ['auth', 'dash', 'join', 'app', 'motor', 'world', 'friends', 'settings'].forEach(k => $(k).classList.toggle('hidden', k !== n));
+  ['auth', 'dash', 'join', 'app', 'motor', 'world', 'friends', 'social', 'settings'].forEach(k => $(k).classList.toggle('hidden', k !== n));
   $('bottomNav').classList.toggle('hidden', n === 'auth');
   document.querySelectorAll('[data-nav]').forEach(b => {
     const on = b.dataset.nav === TAB_OF[n];
@@ -1170,37 +1191,88 @@ function showScreen(n) {
   if (n === 'dash') startDash(); else stopDash();
   if (n !== 'settings' && testStop) testStop();
   if (n === 'motor') renderMotor();
+  if (n === 'social') openSocial();
   if (n === 'settings') { openSettings(); renderPerms(); calUI(); }
   scrollTo(0, 0);
 }
 /* ---------- Güvenlik sorusu (toplama) ----------
    Soru sunucudan gelir, cevap giriş / kayıt isteğiyle gönderilir ve sunucuda doğrulanır. Süresi dolan soru kendiliğinden yenilenir. */
+/* ---------- Güvenlik doğrulaması: sayı toplama ----------
+   "6 + 2 = [Toplam]" sorusu sunucudan gelir; cevap giriş / kayıt isteğiyle gönderilir ve sunucuda doğrulanır.
+   Soru CAP_ROT saniyede bir kendiliğinden değişir. */
+const CAP_ROT = 60;
+function capMark(box) {                       // doğru toplam yazılınca yeşil çerçeve + tik (yalnızca görsel)
+  const ok = box._sum >= 0 && box.querySelector('[data-ans]').value.trim() === String(box._sum);
+  box.querySelector('[data-card]').style.boxShadow = ok ? 'inset 0 0 0 2px #5CC48E' : 'inset 0 0 0 1px rgba(255,255,255,.09)';
+  box.querySelector('[data-ok]').classList.toggle('hidden', !ok);
+}
+function capReason(e) {
+  const m = String(e && e.message || '');
+  return e instanceof TypeError ? 'Sunucuya ulaşılamıyor. İnternet bağlantını ve sunucunun açık olduğunu kontrol et.'
+    : (m === 'İstek başarısız.' || m === 'bad') ? 'Sunucu bu soruyu veremiyor. server.js dosyasının güncel olduğundan ve sunucunun yeniden başlatıldığından emin ol.' : m;
+}
 async function loadCaptcha(box) {
-  const q = box.querySelector('[data-q]'), a = box.querySelector('[data-ans]');
-  box._tok = ''; a.value = ''; q.textContent = '…';
+  const q = box.querySelector('[data-q]'), a = box.querySelector('[data-ans]'), er = box.querySelector('[data-err]');
+  box._tok = ''; box._sum = -1; a.value = ''; q.textContent = '…'; er.classList.add('hidden'); capMark(box);
   try {
     const c = await api('captcha');
-    box._tok = c.token; box._at = Date.now(); q.textContent = c.a + ' + ' + c.b + ' = ?';
-  } catch { q.textContent = 'Yüklenemedi'; }
+    if (!c || !c.token) throw new Error('bad');
+    box._tok = c.token; box._at = Date.now(); box._try = 0; box._sum = c.a + c.b; q.textContent = c.a + ' + ' + c.b + ' =';
+  } catch (e) {
+    q.textContent = 'Yüklenemedi'; er.textContent = capReason(e); er.classList.remove('hidden');
+    if ((box._try = (box._try || 0) + 1) <= 5) setTimeout(() => capLoad(box), 3000 * box._try);   // kendiliğinden tekrar dener
+  }
 }
+function capLoad(box) { if (box._busy) return; box._busy = true; loadCaptcha(box).finally(() => { box._busy = false; }); }
 const capBoxes = () => [...document.querySelectorAll('[data-cap]')];
-// Jetonu olmayan ya da süresi dolmaya yaklaşan soruları yeniler (kutu görünsün görünmesin)
-const refreshCaps = () => capBoxes().forEach(b => { if (!b._busy && (!b._tok || Date.now() - b._at > 8 * 60 * 1000)) { b._busy = true; loadCaptcha(b).finally(() => { b._busy = false; }); } });
+const refreshCaps = () => capBoxes().forEach(b => { if (!b._tok || (Date.now() - b._at) / 1000 >= CAP_ROT) capLoad(b); });
+function capTick() {                          // her saniye: kalan süre çubuğu; süre dolunca soru değişir
+  capBoxes().forEach(b => {
+    if (!b.offsetParent || !b._tok) return;
+    const left = Math.max(0, CAP_ROT - Math.floor((Date.now() - b._at) / 1000));
+    b.querySelector('[data-timer]').textContent = 'Soru ' + left + ' sn sonra değişir';
+    b.querySelector('[data-bar]').style.width = (left / CAP_ROT * 100) + '%';
+    if (left <= 0) capLoad(b);
+  });
+}
 const capData = box => ({ captchaToken: box._tok || '', captchaAnswer: box.querySelector('[data-ans]').value.trim(), website: box.querySelector('[data-hp]').value });
 function capCheck(box) {                      // gönderim öncesi kontrol; sorun varsa kullanıcıya söyler
   refreshCaps();
-  if (!box._tok) { showMsg('Güvenlik sorusu yükleniyor, birkaç saniye sonra tekrar dene.'); return false; }
-  if (!/^\d{1,3}$/.test(box.querySelector('[data-ans]').value.trim())) { showMsg('Güvenlik sorusunun cevabını rakamla yaz.'); return false; }
+  if (!box._tok) { showMsg(box.querySelector('[data-err]').textContent || 'Güvenlik sorusu yükleniyor, birkaç saniye sonra tekrar dene.'); return false; }
+  if (!/^\d{1,3}$/.test(box.querySelector('[data-ans]').value.trim())) { showMsg('Güvenlik sorusunun toplamını rakamla yaz.'); return false; }
   return true;
 }
-capBoxes().forEach(b => { b.querySelector('[data-ref]').onclick = () => loadCaptcha(b); });
-setInterval(refreshCaps, 60000);
+capBoxes().forEach(b => {
+  b.querySelector('[data-ans]').addEventListener('input', () => capMark(b));
+  b.querySelector('[data-ref]').onclick = () => { b._try = 0; b._busy = false; capLoad(b); };
+});
+setInterval(capTick, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshCaps(); });
 refreshCaps();
 const showAuth = () => { showScreen('auth'); refreshCaps(); };
+// Sosyal bölüm: React paketi (public/social.bundle.js) ilk gerektiğinde yüklenir ve ekrana bağlanır
+let socialH = null, socialLoading = false;
+function openSocial() {
+  const props = () => ({
+    me, socket, theme: 'dark',
+    onUnread: n => { const b = $('socialBadge'); b.textContent = n > 99 ? '99+' : String(n); b.classList.toggle('hidden', !n); }
+  });
+  if (socialH) return socialH.update(props());
+  if (socialLoading) return;
+  socialLoading = true;
+  const root = $('social-root');
+  root.innerHTML = '<p class="p-6 text-center text-sm text-zinc-400">Yükleniyor…</p>';
+  const sc = document.createElement('script');
+  sc.src = '/social.bundle.js';
+  sc.onload = () => { root.innerHTML = ''; socialH = window.MotoSocial.mount(root, props()); socialLoading = false; };
+  sc.onerror = () => { root.innerHTML = '<p class="p-6 text-center text-sm text-red-300">Sosyal bölüm yüklenemedi. Sayfayı yenileyip tekrar dene.</p>'; socialLoading = false; };
+  document.head.appendChild(sc);
+}
 function enterHome(user) {
   me = user; remember(user);
   showScreen('dash');
   if (!socket.connected) socket.connect();
+  setTimeout(openSocial, 1500);   // arka planda hazırla: okunmamış mesaj rozeti baştan çalışsın
 }
 function setAuthMode(m) {
   authMode = m; showMsg('');
@@ -1223,7 +1295,7 @@ $('quickForm').onsubmit = async e => {
   const box = $('quickForm').querySelector('[data-cap]');
   if (!capCheck(box)) return;
   try { enterHome((await api('login', { login: quick.u, password: $('qPw').value, ...capData(box) })).user); $('qPw').value = ''; }
-  catch (er) { showMsg(er.message); loadCaptcha(box); }
+  catch (er) { showMsg(er.message); capLoad(box); }
 };
 $('tabLogin').onclick = () => setAuthMode('login');
 $('tabRegister').onclick = () => setAuthMode('register');
@@ -1235,7 +1307,7 @@ $('loginForm').onsubmit = async e => {
   const box = $('loginForm').querySelector('[data-cap]');
   if (!capCheck(box)) return;
   try { enterHome((await api('login', { login: val('lLogin'), password: $('lPw').value, ...capData(box) })).user); }
-  catch (er) { showMsg(er.message); loadCaptcha(box); }
+  catch (er) { showMsg(er.message); capLoad(box); }
 };
 $('registerForm').onsubmit = async e => {
   e.preventDefault(); showMsg('');
@@ -1246,7 +1318,7 @@ $('registerForm').onsubmit = async e => {
       username: val('rUser'), firstName: val('rFirst'), lastName: val('rLast'), gender: $('rGender').value,
       bikeBrand: val('rBrand'), bikeModel: val('rModel'), email: val('rEmail'), password: $('rPw').value, ...capData(box)
     })).user);
-  } catch (er) { showMsg(er.message); loadCaptcha(box); }
+  } catch (er) { showMsg(er.message); capLoad(box); }
 };
 $('forgotForm').onsubmit = async e => {
   e.preventDefault(); showMsg('');
@@ -1648,7 +1720,7 @@ function stopDash() { dashTimers.forEach(clearInterval); dashTimers = []; }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && dashTimers.length) { tickClock(); renderProfile(); renderTips(); loadWeather(); } });
 function goTab(t) {
   if (t === 'comm') return showScreen(inRoom ? 'app' : 'join');   // grupta isen gruba, değilsen grup listesine
-  showScreen({ home: 'dash', motor: 'motor', world: 'world', friends: 'friends', settings: 'settings' }[t]);
+  showScreen({ home: 'dash', motor: 'motor', world: 'world', friends: 'friends', social: 'social', settings: 'settings' }[t]);
 }
 document.querySelectorAll('[data-nav]').forEach(b => { b.onclick = () => goTab(b.dataset.nav); });
 $('toGroups').onclick = () => goTab('comm');
