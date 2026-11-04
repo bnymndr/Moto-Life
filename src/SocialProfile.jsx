@@ -175,10 +175,10 @@ function ConfirmButton({ onConfirm, confirmLabel = 'Emin Misin?', className = DA
 
 function EmojiPanel({ onPick }) {
   return (
-    <div className={cx(CARD, 'grid max-h-40 grid-cols-8 gap-0.5 overflow-y-auto p-2')} aria-label="Emoji Seç">
+    <div className={cx(CARD, 'grid max-h-40 grid-cols-[repeat(auto-fill,minmax(2.25rem,1fr))] gap-0.5 overflow-y-auto p-2')} aria-label="Emoji Seç">
       {EMOJIS.map(e => (
         <button key={e} type="button" onMouseDown={ev => ev.preventDefault()} onClick={() => onPick(e)}
-                className="rounded-lg py-1 text-2xl leading-none hover:bg-slate-100 dark:hover:bg-white/10">{e}</button>
+                className="rounded-lg py-1 text-xl leading-none hover:bg-slate-100 dark:hover:bg-white/10">{e}</button>
       ))}
     </div>
   );
@@ -224,15 +224,15 @@ function Empty({ icon = 'chat', title, text }) {
 
 function UserRow({ user, sub, right, online, onClick }) {
   return (
-    <div className="flex items-center gap-3 py-2">
-      <button type="button" onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2">
+      <button type="button" onClick={onClick} className="flex min-w-[9.5rem] flex-1 items-center gap-3 text-left">
         <Avatar user={user} size={44} online={online} />
         <span className="min-w-0">
           <span className="block truncate font-semibold">{user.name}</span>
           <span className={cx('block truncate text-xs', MUTED)}>{sub || '@' + user.username}</span>
         </span>
       </button>
-      <div className="flex shrink-0 items-center gap-2">{right}</div>
+      {right && <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{right}</div>}
     </div>
   );
 }
@@ -336,7 +336,7 @@ function Composer({ self, onPost }) {
       )}
       {panel === 'emoji' && <EmojiPanel onPick={em => insertAt(area.current, text, em, setText, 500)} />}
       {panel === 'mood' && <MoodChips value={mood} onChange={m => { setMood(m); setPanel(''); }} />}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <input ref={file} type="file" accept="image/*" className="hidden" onChange={choose} />
         <button type="button" disabled={busy} className={tool(!!photo)} aria-label="Fotoğraf Ekle" onClick={() => file.current && file.current.click()}><Icon name="camera" className="h-5 w-5" /></button>
         <button type="button" className={tool(panel === 'mood' || !!mood)} aria-label="Duygu Durumu Ekle" onClick={() => setPanel(p => (p === 'mood' ? '' : 'mood'))}><Icon name="smile" className="h-5 w-5" /></button>
@@ -380,7 +380,7 @@ function PostCard({ post, feed, onOpenUser }) {
           </ConfirmButton>
         )}
       </header>
-      {post.text && <p className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-relaxed">{post.text}</p>}
+      {post.text && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed [overflow-wrap:anywhere]">{post.text}</p>}
       {post.image && (
         <button type="button" onClick={() => setZoom(true)} aria-label="Fotoğrafı Büyüt" className="mt-3 block w-full overflow-hidden rounded-xl bg-slate-100 dark:bg-white/[.06]">
           <img src={post.image} alt="Gönderi fotoğrafı" loading="lazy" decoding="async" className="max-h-[26rem] w-full object-cover" />
@@ -403,7 +403,7 @@ function PostCard({ post, feed, onOpenUser }) {
               <Avatar user={c.author} size={28} />
               <div className="min-w-0 flex-1 rounded-2xl bg-slate-100 px-3 py-2 dark:bg-white/[.07]">
                 <p className="text-xs font-semibold">{c.author.name} <span className={cx('font-normal', MUTED)}>· {ago(c.at)}</span></p>
-                <p className="whitespace-pre-wrap break-words text-sm">{c.text}</p>
+                <p className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{c.text}</p>
               </div>
             </div>
           ))}
@@ -535,7 +535,7 @@ function ProfileView({ username, self, version, onOpenUser, onChat, onRefresh, o
           </div>
           <h2 className="mt-2 truncate text-xl font-bold">{p.name}</h2>
           <p className={cx('truncate text-sm', MUTED)}>@{p.username}{p.bike ? ' · ' + p.bike : ''}</p>
-          {p.bio && !editing && <p className="mt-2 whitespace-pre-wrap break-words text-[15px]">{p.bio}</p>}
+          {p.bio && !editing && <p className="mt-2 whitespace-pre-wrap text-[15px] [overflow-wrap:anywhere]">{p.bio}</p>}
           {(p.status || p.mood) && !editing && (
             <p className="mt-2 inline-flex max-w-full items-center gap-2 rounded-full bg-amber-400/15 px-3 py-1 text-sm text-amber-700 dark:text-amber-300">
               {p.mood && <span className="shrink-0">{moodText(p.mood)}</span>}
@@ -665,7 +665,7 @@ function Thread({ friend, state, typing, self, onBack, onSend, onTyping, onOlder
   return (
     <>
       <header className="flex items-center gap-3 border-b border-slate-200 px-3 py-2.5 dark:border-white/10">
-        <button type="button" onClick={onBack} className={cx(GHOST, '!px-2.5 md:hidden')} aria-label="Geri"><Icon name="back" className="h-4 w-4" /></button>
+        <button type="button" onClick={onBack} className={cx(GHOST, '!px-2.5')} aria-label="Geri"><Icon name="back" className="h-4 w-4" /></button>
         <button type="button" onClick={() => onOpenUser(friend.username)} className="flex min-w-0 items-center gap-3 text-left">
           <Avatar user={friend} size={38} online={friend.online} />
           <span className="min-w-0">
@@ -682,7 +682,7 @@ function Thread({ friend, state, typing, self, onBack, onSend, onTyping, onOlder
           const mine = m.from === self.username;
           return (
             <div key={m.id} className={cx('flex flex-col', mine ? 'items-end' : 'items-start')}>
-              <div className={cx('max-w-[80%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-[15px]',
+              <div className={cx('max-w-[80%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-[15px] [overflow-wrap:anywhere]',
                 mine ? 'rounded-br-md bg-amber-400 text-[#031420]' : 'rounded-bl-md bg-slate-200 dark:bg-white/10',
                 m.pending && 'opacity-60')}>{m.text}</div>
               <span className={cx('mt-0.5 px-1 text-[11px]', m.failed ? 'text-rose-500' : MUTED)}>
@@ -709,12 +709,11 @@ function ChatView({ self, friends, threads, active, typing, onPick, onSend, onTy
   const current = friends.find(f => f.username === active);
   return (
     <div className={cx(CARD, 'flex h-full min-h-0 overflow-hidden')}>
-      <aside className={cx('min-h-0 w-full shrink-0 flex-col overflow-y-auto border-slate-200 dark:border-white/10 md:flex md:w-72 md:border-r', current ? 'hidden' : 'flex')}>
+      <aside className={cx('min-h-0 w-full flex-col overflow-y-auto', current ? 'hidden' : 'flex')}>
         {friends.length === 0 && <p className={cx('p-6 text-center text-sm', MUTED)}>Sohbet için önce arkadaş eklemelisin.</p>}
         {friends.map(f => (
           <button key={f.username} type="button" onClick={() => onPick(f.username)}
-                  className={cx('flex items-center gap-3 px-3 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-white/[.05]',
-                                f.username === active && 'bg-amber-400/10')}>
+                  className="flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-slate-50 dark:hover:bg-white/[.05]">
             <Avatar user={f} size={44} online={f.online} />
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-2">
@@ -731,15 +730,11 @@ function ChatView({ self, friends, threads, active, typing, onPick, onSend, onTy
           </button>
         ))}
       </aside>
-      <section className={cx('min-h-0 min-w-0 flex-1 flex-col', current ? 'flex' : 'hidden md:flex')}>
+      <section className={cx('min-h-0 min-w-0 flex-1 flex-col', current ? 'flex' : 'hidden')}>
         {current
           ? <Thread friend={current} state={threads[current.username]} typing={!!typing[current.username]} self={self}
                     onBack={() => onPick(null)} onSend={onSend} onTyping={onTyping} onOlder={onOlder} onOpenUser={onOpenUser} />
-          : <div className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-              <Icon name="chat" className={cx('h-10 w-10', MUTED)} />
-              <p className="font-semibold">Bir Sohbet Seç</p>
-              <p className={cx('text-sm', MUTED)}>Soldaki listeden bir arkadaşını seçip yazışmaya başla.</p>
-            </div>}
+          : null}
       </section>
     </div>
   );
@@ -909,19 +904,20 @@ function Social({ me, socket, theme = 'dark', onUnread }) {
   if (!me) return null;
   return (
     <div className={dark ? 'dark' : ''} style={{ height: '100%' }}>
-      <div className="relative flex h-full min-h-0 flex-col text-slate-900 dark:text-[#F4EFE6]">
+      <div className="relative flex h-full min-h-0 w-full min-w-0 flex-col overflow-x-hidden text-slate-900 dark:text-[#F4EFE6]">
         <nav className="shrink-0 px-3 pt-3" aria-label="Sosyal Sekmeler">
           <div className="grid grid-cols-4 gap-1 rounded-xl bg-slate-200/70 p-1 dark:bg-white/[.07]">
             {tabs.map(t => (
               <button key={t.id} type="button" onClick={() => pickTab(t.id)} aria-current={tab === t.id ? 'page' : undefined}
-                      className={cx('rounded-lg py-2 text-sm font-semibold transition',
+                      className={cx('relative rounded-lg px-0.5 py-2 text-xs font-semibold tracking-tight transition max-[339px]:text-[11px] min-[380px]:text-[13px] min-[420px]:text-sm',
                                     tab === t.id ? 'bg-amber-400 text-[#031420]' : 'text-slate-600 dark:text-[#C9D0D6]')}>
-                {t.label}<Badge n={t.badge} />
+                {t.label}
+                {t.badge > 0 && <span className="absolute -top-1.5 right-0 min-w-[1.1rem] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-[1.1rem] text-white">{t.badge > 99 ? '99+' : t.badge}</span>}
               </button>
             ))}
           </div>
         </nav>
-        <div className={cx('min-h-0 flex-1 px-3 pb-3 pt-3', tab === 'chat' ? 'overflow-hidden' : 'overflow-y-auto')}>
+        <div className={cx('min-h-0 min-w-0 flex-1 overflow-x-hidden px-3 pb-3 pt-3', tab === 'chat' ? 'overflow-y-hidden' : 'overflow-y-auto')}>
           {tab === 'feed' && (
             <div className="space-y-3">
               <Composer self={self} onPost={feed.prepend} />
