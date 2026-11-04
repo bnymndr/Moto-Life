@@ -420,11 +420,19 @@ tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
       <div class="shrink-0">
         <h2 class="road text-center text-2xl font-semibold leading-none">İnterkom</h2>
         <p id="count" class="mb-2 mt-1 text-center text-xs text-zinc-400"></p>
-        <ul id="peerList" class="h-[19.875rem] max-h-[36dvh] space-y-1.5 overflow-y-auto"></ul>
+        <ul id="peerList" class="h-[19.875rem] min-h-[6rem] max-h-[calc(100dvh-31rem)] space-y-1.5 overflow-y-auto"></ul>
       </div>
       <div class="grid shrink-0 grid-cols-2 gap-1 rounded-xl bg-surface p-1">
         <button id="modeOpen" class="rounded-lg py-3 font-medium">Açık Kanal</button>
         <button id="modePtt" class="rounded-lg py-3 font-medium">Bas-Konuş</button>
+      </div>
+      <div class="shrink-0 rounded-xl bg-surface px-3 py-2">
+        <div class="flex items-center gap-3">
+          <span class="shrink-0 text-sm text-zinc-300">İnterkom Sesi</span>
+          <input id="icVol" type="range" min="0" max="100" step="5" aria-label="İnterkom Sesi" class="h-8 min-w-0 flex-1 accent-amber-400">
+          <span id="icVolVal" class="road w-12 shrink-0 text-right text-lg font-semibold">100%</span>
+        </div>
+        <p id="icNote" class="hidden pt-1 text-center text-xs text-amber-300"></p>
       </div>
       <button id="pttBtn" class="touch-none select-none w-full min-h-24 flex-1 rounded-3xl road text-2xl font-semibold sm:text-4xl"></button>
     </section>
@@ -461,6 +469,7 @@ tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
         <div class="flex items-center justify-between"><span class="text-sm text-zinc-400">Ses</span><span id="volText" class="road text-xl font-semibold">60%</span></div>
         <input id="volRange" type="range" min="0" max="100" step="5" value="60" aria-label="Radyo Sesi" class="h-8 w-full accent-amber-400">
         <div id="duckNote" class="min-h-5 text-center text-sm text-amber-300"></div>
+        <p id="volNote" class="hidden text-center text-xs text-amber-300"></p>
       </div>
       <button id="radioBtn" class="btn road flex h-16 items-center justify-center gap-2 !rounded-2xl !text-3xl"><svg class="h-7 w-7" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><span>Başlat</span></button>
     </div>
@@ -585,7 +594,8 @@ tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
   </div>
 </div>
 <div id="audios"></div>
-<audio id="radioEl" preload="none"></audio>
+<audio id="radioEl" preload="none" crossorigin="anonymous"></audio>
+<audio id="radioEl2" preload="none"></audio>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
@@ -613,7 +623,11 @@ try { Object.assign(GP, JSON.parse(localStorage.getItem('gpref') || '{}')); } ca
 const saveGP = () => { try { localStorage.setItem('gpref', JSON.stringify(GP)); } catch {} };
 let spkOn = true, gset = { locked: false, max: 6, allowReq: true };
 const speaking = new Map(), rowEls = new Map();   // konuşanlar (kimlik -> saniye) ve liste satırları
-const radio = $('radioEl');
+// Radyo: A öğesi Web Audio ses düğümüne bağlanır (iPhone dahil her cihazda uygulama içi ses ayarı çalışır, CORS gerektirir);
+// akış CORS vermiyorsa B öğesine geçilir (cihazın kendi ses özelliği; iPhone'da yalnızca ses tuşları)
+const radioA = $('radioEl'), radioB = $('radioEl2');
+let radio = radioA, rGain = null, rFell = false;
+const HW_VOL = (() => { try { const t = new Audio(); t.volume = 0.5; return t.volume === 0.5; } catch (e) { return false; } })();   // iPhone'da false
 const clearErr = () => { $('joinErr').textContent = ''; $('createErr').textContent = ''; };
 const showErr = (m, id) => { clearErr(); $(id).textContent = m || ''; };
 
@@ -681,7 +695,7 @@ function toggleMic() { muted = !muted; refreshMic(); sendStatus(); }
 function toggleSpk() { spkOn = !spkOn; applySpeaker(); paintRows(); sendStatus(); }
 function applySpeaker() {                                  // hoparlör kapalıyken grup sesi ve radyo susar
   peers.forEach(p => { p.audio.muted = !spkOn; });
-  radio.muted = !spkOn;
+  radioA.muted = radioB.muted = !spkOn;
 }
 function beep(f) {
   if (!GP.beep || !spkOn || !actx) return;
@@ -1028,17 +1042,30 @@ function playRadio() {
   });
 }
 // Engellenen radyo, kullanıcının sonraki dokunuşunda (izinli bir hareket) başlatılır
-document.addEventListener('pointerdown', () => { if (wantPlay && radio.paused && radioUrl) playRadio(); }, true);
-radio.onplaying = () => { $('radioNote').textContent = ''; };
+document.addEventListener('pointerdown', () => {
+  if (actx && actx.state === 'suspended') actx.resume();      // iPhone: ses bağlamı dokunuşla uyanır
+  if (wantPlay && radio.paused && radioUrl) playRadio();
+}, true);
 
 // Katıl düğmesine basılırken (kullanıcı hareketi içinde) ses öğesinin kilidini aç: iPhone/Safari için gerekli
 const SILENT = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-function unlockRadio() {
-  if (radio.getAttribute('src')) return;
-  radio.src = SILENT;
-  radio.play().then(() => { if (radio.src === SILENT) radio.pause(); }).catch(() => {});
+function unlockRadio() {                         // iOS: her iki öğe de bir kullanıcı dokunuşunda "kilitten" çıkarılır
+  [radioA, radioB].forEach(el => {
+    if (el.getAttribute('src')) return;
+    el.src = SILENT;
+    el.play().then(() => { if (el.src === SILENT) el.pause(); }).catch(() => {});
+  });
 }
-function loadStation(url) { radioUrl = url; radio.src = url; playRadio(); }
+function switchRadio(el) {
+  if (radio === el) return;
+  radio.pause(); radio = el; applyLevel(radioLevel); showVolNote(); setRadioUI();
+}
+function setRadioSource(url) {                  // önce Web Audio'lu öğe, olmazsa yedek öğe
+  radioUrl = url; rFell = false;
+  switchRadio(rGain ? radioA : radioB);
+  radio.src = url;
+}
+function loadStation(url) { setRadioSource(url); playRadio(); }
 function pushRadio(playing) {
   socket.emit('radio', { url: radioUrl, name: radioName, playing }, res => {
     if (res && res.ok) { groupRadio = res.radio; refreshRadioPerm(); renderStations(currentList); return; }
@@ -1056,21 +1083,59 @@ $('radioBtn').onclick = () => {
   if (!canControlGroup()) return;                // grup yayını: grup sahibi / yayını başlatan
   if (radio.paused) { playRadio(); pushRadio(true); } else { wantPlay = false; radio.pause(); pushRadio(false); }
 };
-let userVol = 0.6;                 // kullanıcının seçtiği ses (sadece bu cihazı etkiler)
+let userVol = 0.6;                 // kullanıcının seçtiği radyo sesi (yalnızca bu cihazı etkiler, cihazda hatırlanır)
+try { const sv = parseFloat(localStorage.getItem('radioVol')); if (sv >= 0 && sv <= 1) userVol = sv; } catch (e) { /* kayıt yok */ }
+let radioLevel = userVol, radioDucked = false;
+const radioTarget = () => userVol * (radioDucked && CAL.duckOn ? CAL.duck : 1);
+function applyLevel(v) {           // seviyeyi uygula: Web Audio ses düğümü ya da cihazın ses özelliği
+  radioLevel = v;
+  if (rGain && radio === radioA) rGain.gain.setTargetAtTime(v, rGain.context.currentTime, 0.02);
+  else radio.volume = v;
+}
+function initRadioGain() {         // gruba girerken (kullanıcı dokunuşunda) bir kez kurulur
+  if (rGain || !actx) return;
+  try {
+    const src = actx.createMediaElementSource(radioA);
+    rGain = actx.createGain(); rGain.gain.value = radioLevel;
+    src.connect(rGain); rGain.connect(actx.destination);
+  } catch (e) { rGain = null; }
+}
+function showVolNote() {
+  const ok = (rGain && radio === radioA) || HW_VOL;
+  $('volNote').textContent = ok ? '' : 'Bu kanalda uygulama içi ses ayarı çalışmıyor. Telefonun ses tuşlarını kullan.';
+  $('volNote').classList.toggle('hidden', ok);
+}
 function setVol(v) {
   userVol = Math.min(1, Math.max(0, Math.round(v * 20) / 20));
   $('volText').textContent = Math.round(userVol * 100) + '%';
   $('volRange').value = Math.round(userVol * 100);
+  try { localStorage.setItem('radioVol', String(userVol)); } catch (e) { /* kayıt yapılamadı */ }
+  applyLevel(radioTarget());       // kısma döngüsünü beklemeden anında
 }
 $('volRange').oninput = e => setVol(+e.target.value / 100);   // soldan sağa kaydırmalı ses ayarı
-setVol(0.6); radio.volume = 0.6;
-radio.onplay = radio.onpause = setRadioUI;
-radio.onerror = () => { if (radioUrl) $('radioNote').textContent = 'Akış açılamadı. Adres https mi ve çalışıyor mu?'; };
+setVol(userVol);
+function bindRadioEl(el) {         // olaylar yalnızca etkin öğe için işlenir
+  el.onplay = el.onpause = () => { if (el === radio) setRadioUI(); };
+  el.onplaying = () => { if (el === radio) $('radioNote').textContent = ''; };
+  el.onerror = () => {
+    if (el !== radio || !radioUrl || el.getAttribute('src') === SILENT) return;
+    if (el === radioA && !rFell) {   // akış CORS vermiyor: yayın yine çalar, ses ayarı cihaz sesine düşer
+      rFell = true;
+      const url = radioUrl, want = wantPlay;
+      radioA.pause(); radioA.removeAttribute('src'); radioA.load();
+      switchRadio(radioB); radioB.src = url;
+      if (want) playRadio();
+      return;
+    }
+    $('radioNote').textContent = 'Akış açılamadı. Adres https mi ve çalışıyor mu?';
+  };
+}
+bindRadioEl(radioA); bindRadioEl(radioB);
 
 function applyGroup() {                          // grup yayınını bu cihaza uygula
   const g = groupRadio;
   if (!g) return;
-  if (g.url !== radioUrl) { radioUrl = g.url; radio.src = g.url; }
+  if (g.url !== radioUrl) setRadioSource(g.url);
   radioName = g.name || '';
   if (g.playing) playRadio(); else { wantPlay = false; radio.pause(); }
   setRadioUI();
@@ -1138,8 +1203,9 @@ setInterval(() => {
   // Biri konuşuyorsa radyo sesini yumuşakça kıs, bitince eski seviyeye döndür
   if (speakers.length) lastTalk = now;
   const ducked = now - lastTalk < DUCK_HOLD_MS;
-  const target = userVol * (ducked && CAL.duckOn ? CAL.duck : 1), diff = target - radio.volume;
-  radio.volume = Math.abs(diff) < 0.02 ? target : radio.volume + diff * 0.5;
+  radioDucked = ducked;
+  const target = radioTarget(), diff = target - radioLevel;
+  applyLevel(Math.abs(diff) < 0.02 ? target : radioLevel + diff * 0.5);
   $('duckNote').textContent = ducked && !radio.paused ? 'Konuşma var, radyo kısıldı' : '';
 }, 100);
 
@@ -1706,11 +1772,18 @@ function fillGSet() {
 }
 $('gearGroup').onclick = () => { fillGSet(); gMsg(''); $('gset').classList.remove('hidden'); };
 $('gClose').onclick = () => $('gset').classList.add('hidden');
-$('gVoice').oninput = e => {
-  GP.voice = +e.target.value / 100; saveGP();
+function setVoice(v, save = true) {                 // interkom sesi: sayfadaki kaydırıcı ve Grup Ayarları aynı değeri kullanır (yalnızca bu cihaz)
+  GP.voice = Math.min(1, Math.max(0, v));
+  if (save) saveGP();
   peers.forEach(p => { p.audio.volume = GP.voice; });
-  $('gVoiceVal').textContent = '%' + e.target.value;
-};
+  const pct = Math.round(GP.voice * 100);
+  $('gVoice').value = pct; $('gVoiceVal').textContent = '%' + pct;
+  $('icVol').value = pct; $('icVolVal').textContent = pct + '%';
+}
+$('gVoice').oninput = e => setVoice(+e.target.value / 100);
+$('icVol').oninput = e => setVoice(+e.target.value / 100);
+setVoice(GP.voice, false);
+if (!HW_VOL) { $('icNote').textContent = 'iPhone’da interkom sesi telefonun ses tuşlarıyla ayarlanır.'; $('icNote').classList.remove('hidden'); }
 $('gDuckOn').onchange = e => { CAL.duckOn = e.target.checked; saveCal(); };
 $('gBeep').onchange = e => { GP.beep = e.target.checked; saveGP(); };
 $('gWake').onchange = async e => {
@@ -1785,6 +1858,7 @@ async function enter(event, payload, errId) {
   if (!navigator.mediaDevices?.getUserMedia) return fail('Mikrofon için HTTPS gerekli (localhost hariç).');
   actx = actx || new (window.AudioContext || window.webkitAudioContext)();
   actx.resume();
+  initRadioGain();
   try {
     local = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: CAL.echo, noiseSuppression: CAL.noise, autoGainControl: CAL.agc }
@@ -1819,7 +1893,7 @@ $('newPw').addEventListener('keydown', e => e.key === 'Enter' && $('createBtn').
 /* ---------- Grup sahibi işlemleri ve bildirimler ---------- */
 function showNotice(msg) {
   if (local) local.getTracks().forEach(t => t.stop());
-  radio.pause();
+  radioA.pause(); radioB.pause();
   $('noticeText').textContent = msg;
   $('notice').classList.remove('hidden');
 }
