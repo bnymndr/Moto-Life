@@ -303,13 +303,8 @@ tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
   </section>
 </main>
 
-<main id="world" class="hidden mx-auto min-h-[100dvh] max-w-md space-y-3 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+1rem)]">
-  <h1 class="road text-3xl font-bold">Açık Dünya</h1>
-  <section class="card flex flex-col items-center gap-2 py-10 text-center">
-    <svg class="h-10 w-10 text-zinc-500" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe"/></svg>
-    <p class="font-medium">Bu bölüm henüz hazır değil</p>
-    <p class="text-sm text-zinc-400">Hazır olduğunda burada görünecek.</p>
-  </section>
+<main id="world" class="hidden fixed inset-x-0 top-0 overflow-hidden" style="bottom:var(--nav)">
+  <div id="map-root" class="relative h-full w-full"></div>
 </main>
 
 <main id="friends" class="hidden mx-auto min-h-[100dvh] max-w-md space-y-3 p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(var(--nav)+1rem)]">
@@ -492,9 +487,9 @@ tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
       <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-moto"/></svg>
       <span class="text-center text-[10px] leading-tight">My Motor</span>
     </button>
-    <button type="button" data-nav="world" aria-label="Açık Dünya" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
-      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-globe"/></svg>
-      <span class="text-center text-[10px] leading-tight">Açık Dünya</span>
+    <button type="button" data-nav="world" aria-label="Harita" class="flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-map"/></svg>
+      <span class="text-center text-[10px] leading-tight">Harita</span>
     </button>
     <button type="button" data-nav="social" aria-label="Sosyal" class="relative flex flex-col items-center justify-start gap-0.5 px-0.5 pb-1.5 pt-2 text-zinc-400">
       <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><use href="#i-social"/></svg>
@@ -548,6 +543,7 @@ tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
 <symbol id="i-comm" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
 <symbol id="i-moto" viewBox="0 0 24 24"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M5 17l4-6h6l4 6"/><path d="M14 11l-1-4h3"/><path d="M7.5 11H11"/></symbol>
 <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+<symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></symbol>
 <symbol id="i-social" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.7-.8L3 21l1.9-5.1A8.4 8.4 0 1 1 21 11.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></symbol>
 <symbol id="i-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
 <symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol></svg>
@@ -1237,6 +1233,7 @@ const val = id => $(id).value.trim();
 const showMsg = (m, ok) => { $('authMsg').textContent = m || ''; $('authMsg').className = 'min-h-5 text-sm ' + (ok ? 'text-amber-300' : 'text-red-400'); };
 const TAB_OF = { dash: 'home', join: 'comm', app: 'comm', motor: 'motor', world: 'world', friends: 'friends', social: 'social', settings: 'settings' };
 let inRoom = false;
+let mapH = null, mapLoading = false;   // harita ekranı (bkz. openMap)
 function showScreen(n) {
   ['auth', 'dash', 'join', 'app', 'motor', 'world', 'friends', 'social', 'settings'].forEach(k => $(k).classList.toggle('hidden', k !== n));
   $('bottomNav').classList.toggle('hidden', n === 'auth');
@@ -1249,6 +1246,7 @@ function showScreen(n) {
   if (n !== 'settings' && testStop) testStop();
   if (n === 'motor') renderMotor();
   if (n === 'social') openSocial();
+  if (n === 'world') openMap(); else if (mapH) mapH.deactivate();
   if (n === 'settings') { openSettings(); renderPerms(); calUI(); }
   scrollTo(0, 0);
 }
@@ -1323,6 +1321,22 @@ function openSocial() {
   sc.src = '/social.bundle.js';
   sc.onload = () => { root.innerHTML = ''; socialH = window.MotoSocial.mount(root, props()); socialLoading = false; };
   sc.onerror = () => { root.innerHTML = '<p class="p-6 text-center text-sm text-red-300">Sosyal bölüm yüklenemedi. Sayfayı yenileyip tekrar dene.</p>'; socialLoading = false; };
+  document.head.appendChild(sc);
+}
+// Harita ekranı: /map.css ve /map.js ilk açılışta yüklenir (Leaflet, map.js içinden yüklenir)
+function openMap() {
+  if (mapH) return mapH.activate();
+  if (mapLoading) return;
+  mapLoading = true;
+  const root = $('map-root');
+  root.innerHTML = '<p class="p-6 text-center text-sm text-zinc-400">Harita yükleniyor…</p>';
+  if (!document.getElementById('mapCss')) {
+    const l = document.createElement('link'); l.id = 'mapCss'; l.rel = 'stylesheet'; l.href = '/map.css'; document.head.appendChild(l);
+  }
+  const sc = document.createElement('script');
+  sc.src = '/map.js';
+  sc.onload = () => { root.innerHTML = ''; mapH = window.MotoMap.mount(root); mapLoading = false; mapH.activate(); };
+  sc.onerror = () => { root.innerHTML = '<p class="p-6 text-center text-sm text-red-300">Harita yüklenemedi. Sayfayı yenileyip tekrar dene.</p>'; mapLoading = false; sc.remove(); };
   document.head.appendChild(sc);
 }
 function enterHome(user) {
