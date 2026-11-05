@@ -506,5 +506,8 @@ setInterval(() => {
 // Sosyal modül: profil, akış, arkadaşlık, canlı mesajlaşma
 require('./social')({ app, io, users, userFromCookie, uname, dataDir: DATA_DIR });
 
+// Harita servisleri: istemci yapılandırması, hedef arama, rota
+require('./maps')({ app, userFromCookie });
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Moto Interkom çalışıyor: http://localhost:${PORT}`));
