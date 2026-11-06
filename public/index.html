@@ -1335,7 +1335,7 @@ function openMap() {
   }
   const sc = document.createElement('script');
   sc.src = '/map.js';
-  sc.onload = () => { root.innerHTML = ''; mapH = window.MotoMap.mount(root); mapLoading = false; mapH.activate(); };
+  sc.onload = () => { root.innerHTML = ''; mapH = window.MotoMap.mount(root, { user: me && me.username }); mapLoading = false; mapH.activate(); };
   sc.onerror = () => { root.innerHTML = '<p class="p-6 text-center text-sm text-red-300">Harita yüklenemedi. Sayfayı yenileyip tekrar dene.</p>'; mapLoading = false; sc.remove(); };
   document.head.appendChild(sc);
 }

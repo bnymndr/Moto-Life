@@ -29,44 +29,6 @@
   }
   const kmh = ms => (ms == null || !isFinite(ms) ? null : ms * 3.6);
 
-  const MOVE_MS = 0.8;   // bu hızın (m/sn ≈ 2,9 km/h) altı "duruyor" sayılır; GPS titremesi mesafeye eklenmez
-  class RideStats {
-    constructor(now) { this.t0 = now; this.dist = 0; this.moveS = 0; this.max = 0; this.gaps = 0; this.last = null; this.anchor = null; this.speed = null; this.speedAt = 0; this.points = []; }
-    // f: { lat, lon, acc, speed (m/sn | null), t (ms) } — zayıf (±50 m üstü) konumlar tamamen yok sayılır.
-    // Cihaz hız veriyorsa onunla, vermiyorsa "çapa" yöntemiyle (konum, ölçüm hatasından fazla uzaklaşınca) hareket sayılır; GPS titremesi mesafeye eklenmez.
-    add(f) {
-      if (!(f.acc <= 50)) return false;
-      const p = this.last;
-      let disp = f.speed;                                   // ekranda gösterilecek hız (m/sn)
-      if (!p) this.anchor = { lat: f.lat, lon: f.lon, t: f.t };
-      else {
-        const dt = (f.t - p.t) / 1000;
-        if (dt <= 0) return false;
-        const d = haversine(p.lat, p.lon, f.lat, f.lon);
-        if (dt > 30 && d > 100) {                           // uzun boşluk + büyük sıçrama: arada ölçüm yok, mesafe eklenmez
-          this.gaps++; this.anchor = { lat: f.lat, lon: f.lon, t: f.t };
-        } else if (f.speed != null) {
-          if (f.speed >= MOVE_MS) { this.dist += d; this.moveS += Math.min(dt, 30); this.anchor = { lat: f.lat, lon: f.lon, t: f.t }; }
-          else disp = 0;
-        } else {
-          const a = this.anchor, da = haversine(a.lat, a.lon, f.lat, f.lon), dta = Math.max(0.001, (f.t - a.t) / 1000);
-          if (da > Math.max(f.acc, 6)) { this.dist += da; this.moveS += Math.min(dta, 30); disp = da / dta; this.anchor = { lat: f.lat, lon: f.lon, t: f.t }; }
-          else disp = 0;
-        }
-      }
-      this.speed = disp == null ? null : disp;
-      this.speedAt = f.t;
-      if (this.speed != null && f.acc <= 30 && this.speed <= 83) this.max = Math.max(this.max, this.speed);   // 83 m/sn ≈ 300 km/h üstü hatalı ölçüm
-      if (this.points.length < 20000) this.points.push([f.lat, f.lon]);
-      this.last = { lat: f.lat, lon: f.lon, acc: f.acc, t: f.t };
-      return true;
-    }
-    summary(now) {
-      return { dist: this.dist, elapsedS: (now - this.t0) / 1000, moveS: this.moveS, gaps: this.gaps,
-        avgKmh: this.moveS >= 10 ? this.dist / this.moveS * 3.6 : null, maxKmh: this.max > 0 ? this.max * 3.6 : null };
-    }
-  }
-
   class RouteTracker {
     constructor(coords, duration) {
       this.c = coords; this.dur = duration; this.cum = [0];
@@ -90,7 +52,7 @@
     eta(remaining) { return this.total > 0 ? this.dur * remaining / this.total : 0; }
   }
 
-  const Core = { haversine, fmtDist, fmtClock, fmtEta, RideStats, RouteTracker };
+  const Core = { haversine, fmtDist, fmtClock, fmtEta, RouteTracker };
   if (typeof module !== 'undefined' && module.exports) module.exports = Core;
   if (typeof window === 'undefined') return;
 
@@ -115,6 +77,15 @@
   };
   const PIN = '<svg viewBox="0 0 32 40" width="32" height="40" aria-hidden="true"><path d="M16 39S3 26.5 3 15a13 13 0 0 1 26 0c0 11.500-13 24-13 24z" fill="#EA8621" stroke="#031420" stroke-width="2"/><circle cx="16" cy="15" r="5" fill="#031420"/></svg>';
 
+  function loadScripts(list) {
+    return list.reduce((p, src) => p.then(() => new Promise((res, rej) => {
+      const name = src.includes('core') ? 'RideCore' : 'RideStore';
+      if (window[name]) return res();
+      const sc = document.createElement('script'); sc.src = src;
+      sc.onload = () => res(); sc.onerror = () => { sc.remove(); rej(new Error('Sürüş modülü yüklenemedi.')); };
+      document.head.appendChild(sc);
+    })), Promise.resolve());
+  }
   let leafletP = null;
   function loadLeaflet() {
     if (window.L && window.L.map) return Promise.resolve();
@@ -166,6 +137,8 @@
         <div class="mm-mrow"><span>Harita teması</span>
           <div class="mm-seg"><button type="button" data-th="dark">Koyu</button><button type="button" data-th="light">Açık</button></div></div>
         <label class="mm-mrow"><span>Sürüşte ekranı açık tut</span><input type="checkbox" id="mm-wake"></label>
+        <div class="mm-mrow mm-saved"><span id="mm-savedtxt">Kayıtlı sürüş: —</span><button type="button" class="mm-mini" id="mm-syncbtn" hidden>Eşitle</button></div>
+        <p class="mm-note" id="mm-synchint" hidden></p>
         <p class="mm-note" id="mm-wakenote">Konum kaydı için sürüş boyunca uygulamayı ön planda ve ekranı açık tut. Ekran kilitlenirse ya da başka uygulamaya geçersen konum alınamayabilir.</p>
       </div>
     </div>
@@ -186,21 +159,24 @@
       <div class="mm-panel" id="mm-panel">
         <button type="button" class="mm-start" id="mm-start">${ICON.play}<span>Sürüşü başlat</span></button>
         <div class="mm-ride" id="mm-ride" hidden>
-          <div class="mm-spd"><b id="mm-spd">0</b><small>km/h</small></div>
+          <div class="mm-spd"><b id="mm-spd">0</b><small id="mm-spdu">km/h</small></div>
           <div class="mm-stats">
             <div><small>Mesafe</small><b id="mm-sd">0 m</b></div>
             <div><small>Süre</small><b id="mm-st">00:00</b></div>
-            <div><small>Ort.</small><b id="mm-sa">—</b></div>
+            <button type="button" class="mm-savg" id="mm-savg" aria-label="Ortalama hız türünü değiştir"><small id="mm-savgl">Ort. hareket</small><b id="mm-sa">—</b></button>
             <div><small>Maks.</small><b id="mm-sm">—</b></div>
           </div>
-          <button type="button" class="mm-stop" id="mm-stop" aria-label="Sürüşü bitir">${ICON.stop}<span>Bitir</span></button>
+          <div class="mm-rbtns">
+            <button type="button" class="mm-rb mm-pause" id="mm-pause" aria-label="Sürüşü duraklat"><span id="mm-pausel">Duraklat</span></button>
+            <button type="button" class="mm-rb mm-stop" id="mm-stop" aria-label="Sürüşü bitir"><span>Bitir</span></button>
+          </div>
         </div>
       </div>
     </div>
     <div class="mm-modal" id="mm-modal" hidden></div>
   </div>`;
 
-  function mount(host) {
+  function mount(host, opts) {
     host.innerHTML = TEMPLATE;
     const $ = id => host.querySelector('#' + id);
     const el = { root: $('mm'), map: $('mm-map'), load: $('mm-load'), loadMsg: $('mm-load-msg'), retry: $('mm-retry'),
@@ -210,7 +186,8 @@
     const S = { cfg: null, map: null, ready: false, active: false, watch: null, me: null, hadFix: false, follow: true,
       meMarker: null, accCircle: null, dest: null, destMarker: null, route: null, routeLines: [], nav: null,
       ride: null, riding: false, trail: null, tick: null, wl: null, hiddenAt: 0, riders: null, toastT: 0, theme: store.get('mm_theme', 'dark'),
-      keepAwake: store.get('mm_wake', '1') === '1' };
+      keepAwake: store.get('mm_wake', '1') === '1',
+      user: (opts && opts.user) || 'anon', rec: null, trailGroup: null, trailSeg: null, trailBreak: true, sumId: null, persistWarned: false, avgMode: store.get('mm_avg', 'mov'), syncTimer: 0 };
 
     /* ---------- Yardımcılar ---------- */
     function toast(msg, ms) {
@@ -290,8 +267,7 @@
       if (!S.hadFix) { S.hadFix = true; S.follow = true; S.map.setView([f.lat, f.lon], 16); }
       else if (S.follow) S.map.panTo([f.lat, f.lon], { animate: true, duration: 0.6 });
       paintLocate();
-      if (S.riding && S.ride.add(f) && S.trail) S.trail.addLatLng([f.lat, f.lon]);
-      if (S.riding) paintRide();
+      if (rideActive()) { recordFix(f); paintRide(); }
       if (S.nav) updateNav(f);
       if (S.dest) paintDest();
     }
@@ -435,69 +411,195 @@
       S.nav = null; clearRoute();
       el.navbar.hidden = true; $('mm-form').hidden = false; measureHead();
       if (arrived) clearDest(); else if (S.dest && !silent) { el.dest.hidden = false; paintDest(); }
-      if (!S.active && !S.riding) stopWatch();
+      if (!S.active && !rideActive()) stopWatch();
     }
     $('mm-navstop').addEventListener('click', () => stopNav(false));
     $('mm-dclear').addEventListener('click', clearDest);
 
-    /* ---------- Sürüş ---------- */
+    /* ---------- Sürüş kaydı: ölçüm = ride-core.js (Recorder), cihazda saklama + eşitleme = ride-store.js ---------- */
+    const RC = () => window.RideCore, RS = () => window.RideStore;
+    function rideOpen() { return !!S.rec && (S.rec.status === 'active' || S.rec.status === 'paused'); }
+    function rideActive() { return !!S.rec && S.rec.status === 'active'; }
     async function acquireWake() {
-      if (!S.keepAwake || !('wakeLock' in navigator) || S.wl) return;
+      if (!S.keepAwake || !('wakeLock' in navigator) || S.wl || !rideActive()) return;
       try { S.wl = await navigator.wakeLock.request('screen'); S.wl.addEventListener('release', () => { S.wl = null; }); } catch {}
     }
     function releaseWake() { try { S.wl && S.wl.release(); } catch {} S.wl = null; }
-    function startRide() {
-      if (S.riding) return;
-      S.ride = new RideStats(Date.now()); S.riding = true;
-      S.trail = window.L.polyline([], { color: '#F2A64E', weight: 4, opacity: 0.9, interactive: false }).addTo(S.map);
-      if (S.me && Date.now() - S.me.t < 5000 && S.ride.add(S.me)) S.trail.addLatLng([S.me.lat, S.me.lon]);
+
+    // Cihaza yazılamazsa bir kez uyar; sürüş bellekte ve ekranda sürer
+    function persistFail() { if (S.persistWarned) return; S.persistWarned = true; toast('Sürüş cihaza yazılamadı; sayfayı kapatırsan veri kaybolabilir.', 8000); }
+    function metaOf(r) {
+      const ended = r.status === 'ended', now = Date.now();
+      return { id: r.id, owner: S.user, status: r.status, startedAt: r.startedAt, endedAt: r.endedAt, events: r.events.slice(),
+        fixCount: r.fixes.length, sync: ended ? 'pending' : 'local', summary: r.summary(ended ? r.endedAt : now), updatedAt: now };
+    }
+    const persistMeta = r => RS().saveMeta(metaOf(r || S.rec)).catch(persistFail);
+
+    /* iz çizgisi: boşluk/duraklatma sonrası yeni parça başlar (aradaki düz çizgi çizilmez) */
+    function newTrail() { clearTrail(); S.trailGroup = window.L.layerGroup().addTo(S.map); S.trailBreak = true; S.trailSeg = null; }
+    function clearTrail() { if (S.trailGroup) { S.trailGroup.clearLayers(); S.trailGroup.remove(); } S.trailGroup = null; S.trailSeg = null; }
+    function trailAdd(lat, lon, brk) {
+      if (!S.trailGroup) return;
+      if (brk || S.trailBreak || !S.trailSeg) {
+        S.trailSeg = window.L.polyline([[lat, lon]], { color: '#F2A64E', weight: 4, opacity: 0.9, interactive: false });
+        S.trailGroup.addLayer(S.trailSeg); S.trailBreak = false;
+      } else S.trailSeg.addLatLng([lat, lon]);
+    }
+    function recordFix(f) {
+      const rec = S.rec.addFix(f);
+      if (S.rec.limitReached && !S.limitToast) { S.limitToast = true; toast('Kayıt sınırına ulaşıldı (≈8 saat). Sürüşü bitirip yenisini başlat.', 9000); }
+      if (!rec) return null;
+      RS().addFix(S.rec.id, rec[0], rec).catch(persistFail);          // anahtar = zaman damgası: çakışmaz, sıralı okunur
+      if (rec[5] === 0 || rec[5] === 3) trailAdd(rec[1], rec[2], rec[5] === 3);
+      return rec;
+    }
+
+    function showRidePanel() {
       el.start.hidden = true; el.ride.hidden = false;
+      if (!S.tick) S.tick = setInterval(paintRide, 1000);
+      acquireWake(); startWatch(); paintRide();
+    }
+    function startRide() {
+      if (rideOpen() || !S.ready) return !S.ready && toast('Harita henüz hazır değil.');
+      if (!RS().persistent && !S.memWarned) { S.memWarned = true; toast('Bu tarayıcı kalıcı kayıt vermiyor: sürüş yalnızca sayfa açıkken saklanır.', 8000); }
+      S.rec = new (RC().Recorder)(); S.limitToast = false;
+      S.rec.start(Date.now());
+      newTrail(); persistMeta();
+      if (S.me && Date.now() - S.me.t < 5000) recordFix(S.me);       // GPS tazeyse ilk noktayı hemen al
       S.follow = true; paintLocate();
       if (S.me) S.map.setView([S.me.lat, S.me.lon], Math.max(S.map.getZoom(), 16));
-      acquireWake(); startWatch();
-      S.tick = setInterval(paintRide, 1000); paintRide();
+      showRidePanel();
       if (el.gps.dataset.s === 'bad') toast('GPS sinyali zayıf ya da yok; konum geldikçe kayıt başlar.');
     }
-    function paintRide() {
-      const r = S.ride; if (!r) return;
-      const now = Date.now(), sm = r.summary(now);
-      const fresh = r.speed != null && now - r.speedAt < 6000;
-      $('mm-spd').textContent = fresh ? String(Math.round(kmh(r.speed))) : '—';
-      $('mm-sd').textContent = fmtDist(sm.dist);
-      $('mm-st').textContent = fmtClock(sm.elapsedS);
-      $('mm-sa').textContent = sm.avgKmh == null ? '—' : Math.round(sm.avgKmh) + ' km/h';
-      $('mm-sm').textContent = sm.maxKmh == null ? '—' : Math.round(sm.maxKmh) + ' km/h';
+    function pauseRide() {
+      if (!rideActive()) return;
+      S.rec.pause(Date.now()); S.trailBreak = true; persistMeta(); releaseWake(); paintRide();
+      if (!S.active && !S.nav) stopWatch();
     }
+    function resumeRide() {
+      if (!S.rec || S.rec.status !== 'paused') return;
+      S.rec.resume(Date.now()); S.trailBreak = true; persistMeta();
+      S.follow = true; paintLocate(); startWatch(); acquireWake(); paintRide();
+    }
+    function paintRide() {
+      const r = S.rec; if (!r) return;
+      const now = Date.now(), sm = r.summary(now), paused = r.status === 'paused';
+      const fresh = !paused && r.speed != null && now - r.speedAt < 6000;
+      $('mm-spd').textContent = fresh ? String(Math.round(kmh(r.speed))) : '—';
+      $('mm-spdu').textContent = paused ? 'duraklatıldı' : 'km/h';
+      el.ride.classList.toggle('paused', paused);
+      $('mm-sd').textContent = fmtDist(sm.distM);
+      $('mm-st').textContent = fmtClock(sm.durationS);
+      const mov = S.avgMode === 'mov', a = mov ? sm.avgMovingKmh : sm.avgTotalKmh;
+      $('mm-savgl').textContent = mov ? 'Ort. hareket' : 'Ort. toplam';
+      $('mm-sa').textContent = a == null ? '—' : Math.round(a) + ' km/h';
+      $('mm-sm').textContent = sm.maxKmh == null ? '—' : Math.round(sm.maxKmh) + ' km/h';
+      $('mm-pausel').textContent = paused ? 'Devam' : 'Duraklat';
+      $('mm-pause').classList.toggle('resume', paused);
+      $('mm-pause').setAttribute('aria-label', paused ? 'Sürüşe devam et' : 'Sürüşü duraklat');
+    }
+    $('mm-savg').addEventListener('click', () => { S.avgMode = S.avgMode === 'mov' ? 'tot' : 'mov'; store.set('mm_avg', S.avgMode); paintRide(); });
+    $('mm-pause').addEventListener('click', () => (S.rec && S.rec.status === 'paused' ? resumeRide() : pauseRide()));
+    el.start.addEventListener('click', startRide);
+
     function modal(html) { el.modal.innerHTML = '<div class="mm-mcard" role="dialog" aria-modal="true">' + html + '</div>'; el.modal.hidden = false; const b = el.modal.querySelector('[data-focus]'); if (b) b.focus(); }
     function closeModal() { el.modal.hidden = true; el.modal.innerHTML = ''; }
+    function closeSummary() { closeModal(); clearTrail(); S.sumId = null; }
     $('mm-stop').addEventListener('click', () => {
-      if (!S.riding) return;
-      modal('<h3>Sürüş bitirilsin mi?</h3><p>Şu ana kadarki ölçümler özet olarak gösterilir.</p><div class="mm-mbtns"><button type="button" class="mm-mb" data-act="cancel">Devam et</button><button type="button" class="mm-mb danger" data-act="end" data-focus>Bitir</button></div>');
+      if (!rideOpen()) return;
+      modal('<h3>Sürüş bitirilsin mi?</h3><p>Sürüş cihaza kaydedilir ve özeti gösterilir.</p><div class="mm-mbtns"><button type="button" class="mm-mb" data-act="cancel">Devam et</button><button type="button" class="mm-mb danger" data-act="end" data-focus>Bitir</button></div>');
     });
-    el.start.addEventListener('click', startRide);
     el.modal.addEventListener('click', e => {
       const a = e.target.closest('[data-act]'); if (!a) return;
-      if (a.dataset.act === 'cancel' || a.dataset.act === 'close') { closeModal(); if (a.dataset.act === 'close' && S.trail) { S.trail.remove(); S.trail = null; } }
-      if (a.dataset.act === 'end') endRide();
+      const k = a.dataset.act;
+      if (k === 'cancel') closeModal();
+      else if (k === 'close') closeSummary();
+      else if (k === 'end') endRide();
+      else if (k === 'rec-end') endRide(S.recLastT);
+      else if (k === 'rec-resume') { closeModal(); resumeRide(); }
     });
-    function endRide() {
-      clearInterval(S.tick); S.tick = null; releaseWake();
-      const sm = S.ride.summary(Date.now());
-      S.riding = false; S.ride = null;
-      el.ride.hidden = true; el.start.hidden = false;
-      if (!S.active && !S.nav) stopWatch();
-      if (S.trail && S.trail.getLatLngs().length > 1) S.map.fitBounds(S.trail.getBounds(), { paddingTopLeft: [40, 100], paddingBottomRight: [40, 330], maxZoom: 17 });
-      S.follow = false; paintLocate();
-      const row = (k, v) => `<div><small>${k}</small><b>${v}</b></div>`;
+
+    const SYNC_TXT = { sending: 'Sunucuya gönderiliyor…', synced: 'Sunucuya kaydedildi ✓', offline: 'Çevrimdışı: sürüş cihazda güvende, bağlantı gelince otomatik gönderilecek.',
+      auth: 'Oturum süresi dolmuş: giriş yapınca otomatik gönderilecek.', retry: 'Sunucu şu an yanıt vermiyor; otomatik tekrar denenecek.' };
+    const savedLine = () => RS().persistent ? 'Cihaza kaydedildi ✓' : 'Bu tarayıcı kalıcı kayıt vermiyor';
+    function onSyncState(id, state, msg) {
+      if (id !== S.sumId) return;
+      const p = host.querySelector('#mm-syncst'); if (!p) return;
+      p.textContent = savedLine() + ' · ' + (state === 'failed' ? 'Sunucu sürüşü kabul etmedi: ' + (msg || '') + ' (veri cihazda saklanıyor)' : SYNC_TXT[state] || '');
+      p.dataset.s = state;
+    }
+    function syncNow() { return RS().sync(S.user, onSyncState).then(r => { refreshCounts(); return r; }).catch(() => {}); }
+    async function refreshCounts() {
+      try {
+        const c = await RS().counts(S.user), bad = c.pending + c.failed;
+        $('mm-savedtxt').textContent = 'Kayıtlı sürüş: ' + c.total + (bad ? ' · gönderilmeyi bekleyen: ' + bad : '');
+        $('mm-syncbtn').hidden = !bad;
+        const h = $('mm-synchint'), msgs = [];
+        if (c.failed) msgs.push(c.failed + ' sürüş sunucu tarafından kabul edilmedi; cihazda saklanıyor.');
+        if (!RS().persistent) msgs.push('Bu tarayıcı cihaz kaydı vermiyor.');
+        h.hidden = !msgs.length; h.textContent = msgs.join(' ');
+      } catch {}
+    }
+    $('mm-syncbtn').addEventListener('click', async () => { await RS().retryFailed(S.user); toast('Eşitleniyor…', 2500); const r = await syncNow(); if (r && r.offline) toast('Çevrimdışısın; bağlantı gelince otomatik gönderilecek.', 5000); });
+    window.addEventListener('online', () => syncNow());
+    S.syncTimer = setInterval(() => { if (document.body.contains(host)) syncNow(); }, 60000);
+
+    const dur = s => fmtClock(s);
+    function showSummary(sm, id, mode) {
+      if (mode === 'empty') {
+        return modal('<h3>Sürüş özeti</h3><p>Hiç geçerli konum alınamadığı için kaydedilecek sürüş verisi yok; bu sürüş kaydedilmedi. Konum iznini ve GPS sinyalini kontrol et.</p><div class="mm-mbtns"><button type="button" class="mm-mb primary" data-act="close" data-focus>Tamam</button></div>');
+      }
+      const row = (k, v) => `<div><small>${k}</small><b>${v}</b></div>`, kh = v => (v == null ? '—' : Math.round(v) + ' km/h');
+      const notes = [];
+      if (sm.rejectedAcc || sm.rejectedJump) notes.push(`Elenen konum: ${sm.rejectedAcc} zayıf doğruluk, ${sm.rejectedJump} GPS sıçraması.`);
+      if (sm.gaps || sm.reanchors) notes.push(`Konum alınamayan ${sm.gaps + sm.reanchors} kesinti oldu; o aralıklardaki mesafe ölçülmedi.`);
+      if (sm.limitReached) notes.push('Kayıt sınırına ulaşıldı; sonrası kaydedilmedi.');
       modal('<h3>Sürüş özeti</h3><div class="mm-sum">' +
-        row('Mesafe', fmtDist(sm.dist)) + row('Süre', fmtClock(sm.elapsedS)) + row('Hareket süresi', fmtClock(sm.moveS)) +
-        row('Ort. hız', sm.avgKmh == null ? '—' : Math.round(sm.avgKmh) + ' km/h') + row('Maks. hız', sm.maxKmh == null ? '—' : Math.round(sm.maxKmh) + ' km/h') + '</div>' +
-        (sm.gaps ? `<p class="warn">Konum alınamayan ${sm.gaps} kesinti oldu; o aralıklardaki mesafe ölçülmedi.</p>` : '') +
-        '<p>Mesafe ve hızlar telefonun GPS ölçümlerinden hesaplanır. Bu sürüş henüz kaydedilmiyor; sürüş geçmişi sonraki aşamada eklenecek.</p>' +
+        row('Mesafe', fmtDist(sm.distM)) + row('Aktif süre', dur(sm.durationS)) + row('Hareket süresi', dur(sm.movingS)) + row('Duruş süresi', dur(sm.stoppedS)) +
+        row('Ort. hız (hareket)', kh(sm.avgMovingKmh)) + row('Ort. hız (toplam)', kh(sm.avgTotalKmh)) + row('Maks. hız', kh(sm.maxKmh)) +
+        row('Duraklatma', sm.pausedS >= 1 ? sm.pauseCount + ' × ' + dur(sm.pausedS) : '—') + row('Rota noktası', sm.points) + '</div>' +
+        notes.map(n => `<p class="warn">${esc(n)}</p>`).join('') +
+        '<p>Mesafe ve hızlar telefonun GPS ölçümlerinden hesaplanır. Aktif süre duraklatmaları içermez; ortalama hız ikisine göre de verilir.</p>' +
+        `<p class="mm-sync" id="mm-syncst" data-s="local">${savedLine()}</p>` +
         '<div class="mm-mbtns"><button type="button" class="mm-mb primary" data-act="close" data-focus>Tamam</button></div>');
     }
+    function endRide(at) {
+      const r = S.rec; if (!rideOpen()) return;
+      clearInterval(S.tick); S.tick = null; releaseWake();
+      r.end(at || Date.now());
+      const sm = r.summary(r.endedAt), id = r.id, hasData = r.track.length > 0;
+      S.rec = null; el.ride.hidden = true; el.start.hidden = false;
+      if (!S.active && !S.nav) stopWatch();
+      if (r.track.length > 1) S.map.fitBounds(r.track, { paddingTopLeft: [40, 100], paddingBottomRight: [40, 330], maxZoom: 17 });
+      S.follow = false; paintLocate(); S.sumId = id;
+      if (!hasData) { RS().remove(id).catch(() => {}); showSummary(sm, id, 'empty'); S.sumId = null; refreshCounts(); return; }
+      showSummary(sm, id, 'saved');
+      RS().saveMeta(metaOf(r)).then(() => syncNow(), persistFail);   // önce cihaza yaz, sonra gönder
+    }
+    // Sayfa kapandı/yenilendiyse yarım kalan sürüşü cihazdan kurtar
+    async function checkRecovery() {
+      if (rideOpen()) return;
+      const open = await RS().findOpen(S.user); if (!open.length) return;
+      const lastAct = d => Math.max(d.startedAt, ...d.events.map(e => e[0]), ...(d.fixes.length ? [d.fixes[d.fixes.length - 1][0]] : []));
+      for (const m of open.slice(1)) {                                  // olmaması gereken eski açık kayıtlar: son bilinen anda kapat
+        const l = await RS().load(m.id); if (!l) continue;
+        const r = RC().Recorder.replay(l.data), t = lastAct(l.data);
+        if (r.status === 'active') r.pause(t); r.end(t);
+        if (r.track.length) await RS().saveMeta(metaOf(r)); else await RS().remove(m.id);
+      }
+      const l = await RS().load(open[0].id); if (!l) return;
+      const rec = RC().Recorder.replay(l.data), t = lastAct(l.data);
+      if (rec.status === 'active') rec.pause(t);                         // kopma anında duraklatılmış say
+      S.rec = rec; S.recLastT = t; S.limitToast = false;
+      newTrail(); rec.track.forEach((p, i) => trailAdd(p[0], p[1], i === 0));
+      persistMeta(); showRidePanel();
+      if (rec.track.length > 1) S.map.fitBounds(rec.track, { paddingTopLeft: [40, 100], paddingBottomRight: [40, 330], maxZoom: 17 });
+      const sm = rec.summary(t), when = new Date(rec.startedAt).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+      modal('<h3>Yarım kalan sürüş</h3><p>' + esc(when) + ' tarihli sürüş sayfa kapanınca/yenilenince yarıda kalmış. Cihazda saklanan ' + sm.points + ' GPS noktası, ' + fmtDist(sm.distM) + ' korundu. Sürüş son kayıt anında duraklatıldı.</p>' +
+        '<div class="mm-mbtns"><button type="button" class="mm-mb" data-act="rec-end">Bitir ve kaydet</button><button type="button" class="mm-mb primary" data-act="rec-resume" data-focus>Devam et</button></div>');
+    }
     document.addEventListener('visibilitychange', () => {
-      if (!S.riding) return;
+      if (!rideActive()) return;
       if (document.hidden) S.hiddenAt = Date.now();
       else {
         if (S.hiddenAt && Date.now() - S.hiddenAt > 5000) toast('Uygulama arka plandaydı; bu sürede konum kaydı olmayabilir.', 6000);
@@ -512,17 +614,18 @@
     el.mbtn.addEventListener('click', e => { e.stopPropagation(); const o = el.menu.hidden; el.menu.hidden = !o; el.mbtn.setAttribute('aria-expanded', String(o)); });
     el.menu.addEventListener('click', e => { e.stopPropagation(); const t = e.target.closest('[data-th]'); if (t) setTheme(t.dataset.th); });
     $('mm-wake').checked = S.keepAwake;
-    $('mm-wake').addEventListener('change', e => { S.keepAwake = e.target.checked; store.set('mm_wake', S.keepAwake ? '1' : '0'); if (S.riding) (S.keepAwake ? acquireWake() : releaseWake()); });
+    $('mm-wake').addEventListener('change', e => { S.keepAwake = e.target.checked; store.set('mm_wake', S.keepAwake ? '1' : '0'); if (rideActive()) (S.keepAwake ? acquireWake() : releaseWake()); });
     if (!('wakeLock' in navigator)) { $('mm-wake').disabled = true; $('mm-wake').checked = false; $('mm-wakenote').textContent = 'Bu tarayıcı ekranı açık tutmayı desteklemiyor. Sürüş boyunca ekranı kendin açık tut; ekran kilitlenirse konum alınamayabilir.'; }
     host.addEventListener('click', e => { if (!el.menu.hidden && !el.menu.contains(e.target)) { el.menu.hidden = true; el.mbtn.setAttribute('aria-expanded', 'false'); } if (!el.results.hidden && !el.head.contains(e.target) && !el.results.contains(e.target)) showResults(''); });
-    host.addEventListener('keydown', e => { if (e.key === 'Escape') { el.menu.hidden = true; if (!el.modal.hidden && !S.riding && !el.modal.querySelector('[data-act=end]')) closeModal(); } });
+    host.addEventListener('keydown', e => { if (e.key === 'Escape') { el.menu.hidden = true; if (!el.modal.hidden && el.modal.querySelector('[data-act=close]')) closeSummary(); } });
     setTheme(S.theme);
 
     /* ---------- Başlatma ---------- */
     function boot() {
       el.load.hidden = false; el.retry.hidden = true; el.loadMsg.textContent = 'Harita yükleniyor…';
       const cfgP = fetch('/api/maps/config', { credentials: 'same-origin' }).then(r => { if (!r.ok) throw new Error(r.status === 401 ? 'Oturum süresi dolmuş. Sayfayı yenile.' : 'Harita ayarları alınamadı.'); return r.json(); });
-      Promise.all([cfgP, loadLeaflet()]).then(([cfg]) => initMap(cfg)).catch(err => {
+      const ridesP = loadScripts(['/ride-core.js', '/ride-store.js']).then(() => window.RideStore.init());
+      Promise.all([cfgP, loadLeaflet(), ridesP]).then(([cfg]) => { initMap(cfg); checkRecovery().catch(() => {}); refreshCounts(); syncNow(); }).catch(err => {
         el.loadMsg.textContent = err.message || 'Harita yüklenemedi.'; el.retry.hidden = false;
       });
     }
@@ -531,7 +634,7 @@
 
     return {
       activate() { S.active = true; if (S.ready) { S.map.invalidateSize(); measureHead(); startWatch(); } },
-      deactivate() { S.active = false; if (!S.riding && !S.nav) stopWatch(); },
+      deactivate() { S.active = false; if (!rideActive() && !S.nav) stopWatch(); },
       setRiders, flyToMe
     };
   }
