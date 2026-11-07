@@ -13,7 +13,7 @@ Hedef modüller: canlı harita/navigasyon, sürüş ve performans ölçümleri, 
 - Gerçek zamanlı: Socket.IO sinyalleşme + WebRTC mesh (en fazla 6 kişi). Ses sunucudan geçmez. ICE: yalnızca Google STUN (`index.html` ~satır 605).
 - PWA: `public/manifest.webmanifest`, `public/sw.js`.
 - Harita: Leaflet 1.9.4 (cdnjs, sabit sürüm; `public/map.js` yükler). Karolar OSM varsayılanı, sunucudan yapılandırılır.
-- Ortam değişkenleri (değerleri kaydetme): `PORT`, `SESSION_SECRET`, `APP_URL`, `MAIL_FROM`, `SMTP_HOST/PORT/USER/PASS`, `ORS_API_KEY` (rota; yoksa rota kapalı), `MAP_TILE_URL`, `MAP_TILE_ATTRIBUTION`.
+- Ortam değişkenleri (değerleri kaydetme): `PORT`, `SESSION_SECRET`, `APP_URL`, `MAIL_FROM`, `SMTP_HOST/PORT/USER/PASS`, `GEOAPIFY_API_KEY` (motosiklet rotası), `ORS_API_KEY` (araba rotası), `ORS_BASE_URL`, `ROUTE_PROVIDER`, `ROUTE_DAILY_LIMIT`, `ROUTE_USER_DAILY`, `MAP_TILE_URL`, `MAP_TILE_ATTRIBUTION`. Hiçbiri istemciye gitmez; anahtar yoksa rota kapalı, arama çalışır.
 - Test betikleri: `yerel-test.bat`, `canli-test.bat` (cloudflared tüneli).
 
 ## 3. Önemli dosyalar
@@ -22,7 +22,7 @@ Hedef modüller: canlı harita/navigasyon, sürüş ve performans ölçümleri, 
 - `src/SocialProfile.jsx`, `src/social.entry.jsx`: sosyal arayüz kaynağı. `build-social.js`: derleme.
 - `public/index.html` (~1900 satır): tüm ekranlar (`<main id="dash|motor|world|friends|social|settings">`, `#tab-comm`, `#tab-radio`), alt gezinme `#bottomNav` (`data-nav`), ekran geçişi `showScreen`/`goTab` (~satır 1238-1250).
 - `public/stations.js`: radyo istasyonu listesi.
-- `maps.js`: `/api/maps/config`, `/api/geocode` (Nominatim proxy: 1 istek/sn kuyruk, önbellek, kullanıcı sınırı), `/api/route` (ORS `driving-car`, yalnızca anahtar varsa). `server.js` içinde tek `require` satırı.
+- `maps.js`: `/api/maps/config`, `/api/geocode` (Nominatim proxy: 1 istek/sn kuyruk, önbellek, kullanıcı sınırı), `/api/route` (sağlayıcı: Geoapify `mode=motorcycle` varsa o, yoksa ORS `driving-car`; kaçınma seçenekleri yalnızca profilin desteklediği kadar; geometri sunucuda sadeleştirilir; önbellek + günlük bütçe + dakikalık sınır).
 - `public/map.js` + `public/map.css`: Harita ekranı (`window.MotoMap.mount/activate/deactivate/setRiders`). `index.html`'de `#world`→`#map-root`, `openMap()`, `showScreen` kancası, `#i-map` ikonu. Çekirdek hesaplar (`RideStats`, `RouteTracker`) Node ile test edilebilir.
 - `public/ride-core.js`: sürüş kaydı çekirdeği (`Recorder`: başlat/duraklat/devam/bitir, GPS filtreleri, özet, `replay`, `validateRide`). İstemci VE sunucu aynı dosyayı kullanır; kuralı değiştirirsen ikisi birden değişir.
 - `public/ride-store.js`: IndexedDB kalıcı kayıt (nokta başına yazım, anahtar = zaman damgası), bellek yedeği, çevrimdışı kuyruk, `sync()`.
@@ -38,7 +38,7 @@ Tamamlanan:
 - Bireysel sürüş kaydı: başlat/duraklat/devam/bitir, anlık-ort.-maks. hız, mesafe, aktif/hareket/duruş süresi, iki ortalama hız (hareket ve toplam; panelde dokununca değişir), zaman damgalı ham GPS noktaları, cihaza anında kayıt, sayfa yenilenirse/kapanırsa kurtarma ("Yarım kalan sürüş"), çevrimdışı kuyruk + otomatik/elle eşitleme.
 - Harita ekranı (alt gezinmede "Harita", eski "Açık Dünya" yuvası): canlı GPS konumu, yakınlaştır/uzaklaştır, konumuma dön, koyu/açık tema, hedef arama (düğmeyle), hedef kartı (kuş uçuşu mesafe), sürüş başlat/bitir (mesafe, süre, anlık/ort./maks. hız; özet), `setRiders()` işaret altyapısı, rota + kalan mesafe/ETA + sapınca yeniden hesaplama (ORS_API_KEY ile).
 
-Yarım / yer tutucu: "Arkadaşlar" ekranı (boş). Rota yalnızca `ORS_API_KEY` tanımlıysa çalışır (yazıldı, gerçek ORS ile test EDİLMEDİ).
+Yarım / yer tutucu: "Arkadaşlar" ekranı (boş). Rota/navigasyon kodu yazıldı ve sahte sağlayıcı yanıtlarıyla test edildi; GERÇEK Geoapify/ORS anahtarıyla ve gerçek cihazda test EDİLMEDİ. Adım adım/sesli yönlendirme yok.
 
 Hiç yok: sürüş geçmişi/analiz ekranı (kayıtlar `GET /api/rides` ile okunabilir), sensör verileri (ani fren/hızlanma, yatış, rakım), canlı konum paylaşımı, davet kodu/bağlantısı, grup sürüşü takibi, adım adım/sesli yönlendirme.
 
@@ -60,15 +60,16 @@ Hiç yok: sürüş geçmişi/analiz ekranı (kayıtlar `GET /api/rides` ile okun
 - Sürüş verisi modeli: olaylar `[t, tür, n]` (n = o ana kadar saklanan nokta sayısı), noktalar `[t,lat,lon,acc,hız|null,bayrak]` (0 kabul, 1 zayıf doğruluk, 2 sıçrama, 3 yeni referans). Elenen noktalar da saklanır. Özet her zaman ham veriden `replay` ile hesaplanır; sunucu istemcinin özetine güvenmez. Duraklatma/boşluk sırasındaki yer değişimi mesafeye eklenmez.
 - Filtre değerleri (`ride-core.js`): doğruluk >50 m elenir; fiziksel olarak mümkün olmayan yer değişimi (ivme 12 m/sn², 83 m/sn üstü) sıçrama sayılır, art arda 3 sıçrama yeni referans olur; >30 sn boşluk + >100 m sıçrama kesinti sayılır; <0,8 m/sn duruş sayılır; sınır 30000 nokta (~8 sa). Değerler gerçek sürüş verisiyle ayarlanmadı.
 - PWA arka planda güvenilir konum kaydetmez; sürüşte wake lock ile ekran açık tutulur.
-- Rota: ORS `driving-car`; arayüz "araç rotası, motosiklet için optimize değil" der. Google TWO_WHEELER Türkiye'de yok. Gerçek motosiklet profili ayrı karar (kendi sunucu/GraphHopper özel profil).
+- Rota sağlayıcıları: ORS'nin motosiklet profili YOK (araba/kamyon/bisiklet/yaya); eski adresi api.openrouteservice.org kapatılıyor → `api.heigit.org/openrouteservice` (anahtarlar account.heigit.org). Geoapify `motorcycle` modu var (ücretsiz ≈3000 kredi/gün, ≈1 kredi/rota, atıf gerekir) ama otoyol/ücretli kaçınma yalnızca araba modlarında; motosiklette sadece feribot. Google TWO_WHEELER Türkiye'de yok; Mapbox'ta motosiklet yok. Arayüz profile göre dürüst etiket gösterir; araba rotası "motosiklet için optimize değil" der.
+- Rota akışı (gereksiz çağrı yok): hedef seç (çağrı yok) → "Rota oluştur" (1 çağrı) → önizleme → "Navigasyonu başlat" (çağrı yok) → kalan mesafe/ETA yerelde; yeniden hesaplama yalnızca rotadan >max(80 m, 2×doğruluk) ve >10 sn sapınca, en geç 30 sn'de bir (hatada üstel bekleme, en çok 12), çevrimdışıyken denenmez. ETA = plan hızı ile ölçülen gerçek hızın karışımı (trafiksiz tahmin).
 - Arama otomatik tamamlama yapmaz (Nominatim politikası); sonuç sunucuda önbelleklenir.
-- Bekleyen kararlar (netleşmedi, varsayma): harita/rota servisi (ücretsiz OSM mi, ücretli mi), ikon düzeltme yönü, TURN sağlayıcısı.
+- Bekleyen kararlar (netleşmedi, varsayma): rota sağlayıcısı olarak Geoapify hesabı/anahtarı (koşullar: atıf, ticari kullanım) , ikon düzeltme yönü, TURN sağlayıcısı, üretim karo sağlayıcısı.
 
 ## 7. Geliştirme sırası
 1. Hazırlık: ikon yolu, `.gitignore` (YAPILMADI).
 2. Harita + anlık konum + izin akışı (YAPILDI, cihazda doğrulanacak).
 3. Sürüş kaydı: ölçüm, cihaza kayıt, kurtarma, sunucuya eşitleme YAPILDI (gerçek cihazda doğrulanacak). Sırada: geçmiş/analiz ekranı.
-4. Hedef arama YAPILDI; rota kodu hazır, ORS anahtarı ve gerçek test bekliyor.
+4. Hedef arama + rota + navigasyon YAPILDI (sahte yanıtlarla test); gerçek anahtarla ve cihazda doğrulanacak. Sırada: adım adım yönlendirme (ORS/Geoapify talimatları), geçmiş/analiz ekranı.
 5. Sensör olayları (ani fren/hızlanma, yatış).
 6. Canlı konum paylaşımı (gizlilik, mesafe filtresi).
 7. Grup sürüşü (davet kodu, lider, geride kalan uyarısı).
