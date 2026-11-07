@@ -41,6 +41,7 @@
 .mm-ritem:last-child{border-bottom:0}
 .mm-ritem:active{background:rgba(255,255,255,.08)}
 .mm-ritem b{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mm-ritem b em{float:right;margin-left:10px;font-style:normal;font-weight:600;font-size:13px;color:var(--accent2)}
 .mm-ritem span{font-size:13px;color:#93A4B2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mm-rmsg{padding:16px;color:#C9D0D6;font-size:15px}
 .mm-rmsg.err{color:#f0a39c}
@@ -51,7 +52,9 @@
 .mm-navnums b{font:700 32px/1.1 'Barlow Condensed','Arial Narrow',sans-serif;color:var(--accent2)}
 .mm-navnums span{font-size:14px;color:#F4EFE6}
 .mm-navnote{font-size:11px;color:#93A4B2}
-.mm-navstop{min-width:84px;height:56px;border-radius:14px;background:#E8675D;color:var(--ink);font-weight:700;font-size:16px}
+.mm-nbtns{display:flex;flex-direction:column;gap:6px}
+.mm-nb{width:96px;height:46px;border-radius:12px;background:rgba(255,255,255,.1);color:#F4EFE6;font-weight:700;font-size:14px;box-shadow:inset 0 0 0 1px var(--line)}
+.mm-nb.stop{background:#E8675D;color:var(--ink);box-shadow:none;font-size:16px}
 
 /* Sağ kontroller */
 .mm-side{position:absolute;z-index:18;right:var(--pad);top:calc(var(--head) + 48px);display:flex;flex-direction:column;gap:8px}
@@ -75,17 +78,29 @@
 .mm-attr{align-self:flex-end;max-width:100%;padding:2px 7px;border-radius:6px;background:rgba(3,20,32,.72);font-size:10px;line-height:1.5;color:#C9D0D6}
 .mm-attr:empty{display:none}
 .mm-attr a{color:#F2A64E;text-decoration:none}
-.mm-card{padding:12px;border-radius:18px;background:var(--bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 26px rgba(0,0,0,.45),inset 0 0 0 1px var(--line);display:flex;flex-direction:column;gap:8px}
+.mm-card{padding:10px 12px;border-radius:18px;background:var(--bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 26px rgba(0,0,0,.45),inset 0 0 0 1px var(--line);display:flex;flex-direction:column;gap:6px}
 .mm-dtop{display:flex;align-items:flex-start;gap:8px}
 .mm-dtxt{flex:1;min-width:0}
 .mm-dtitle{font-size:18px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mm-dsub{font-size:13px;color:#93A4B2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mm-x{width:44px;height:44px;margin:-6px -6px 0 0;border-radius:12px;background:transparent;color:#93A4B2;display:flex;align-items:center;justify-content:center}
 .mm-dline{font-size:14px;color:#F2A64E;font-weight:600}
-.mm-navgo{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:56px;border-radius:14px;background:var(--accent);color:var(--ink);font-weight:700;font-size:18px}
+.mm-dbtns{display:flex;gap:8px}
+.mm-rcancel{flex:none;width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.1);color:#F4EFE6;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px var(--line)}
+.mm-rcancel[hidden]{display:none!important}
+.mm-rinfo{display:flex;flex-direction:column;gap:1px}
+.mm-rnums{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.mm-rnums b{font:700 30px/1.05 'Barlow Condensed','Arial Narrow',sans-serif;color:var(--accent2)}
+.mm-rnums span{font-size:15px;color:#F4EFE6;font-weight:600}
+.mm-rlabel{font-size:12px;color:#93A4B2}
+.mm-chips{display:flex;flex-wrap:wrap;gap:6px}
+.mm-chip2{min-height:44px;padding:0 14px;border-radius:999px;background:rgba(255,255,255,.08);color:#C9D0D6;font-size:14px;font-weight:600;box-shadow:inset 0 0 0 1px var(--line)}
+.mm-chip2[aria-pressed=true]{background:var(--accent);color:var(--ink);box-shadow:none}
+.mm-navgo{display:flex;align-items:center;justify-content:center;gap:10px;flex:1;min-width:0;height:52px;border-radius:14px;background:var(--accent);color:var(--ink);font-weight:700;font-size:18px}
 .mm-navgo:active:not(:disabled){background:var(--accent2)}
 .mm-navgo:disabled{background:rgba(255,255,255,.08);color:#7f93a3}
 .mm-dnote{margin:0;font-size:12.5px;line-height:1.4;color:#93A4B2}
+.mm-dnote.err{color:#f0a39c;font-size:13.5px}
 .mm-panel{border-radius:18px;background:var(--bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 8px 26px rgba(0,0,0,.45),inset 0 0 0 1px var(--line);padding:8px}
 .mm-start{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;height:64px;border-radius:14px;background:var(--accent);color:var(--ink);font:700 24px/1 'Barlow Condensed','Arial Narrow',sans-serif;letter-spacing:.04em;text-transform:uppercase}
 .mm-start:active{background:var(--accent2)}

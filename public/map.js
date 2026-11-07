@@ -30,9 +30,13 @@
   const kmh = ms => (ms == null || !isFinite(ms) ? null : ms * 3.6);
 
   class RouteTracker {
-    constructor(coords, duration) {
+    // distance (sağlayıcının verdiği gerçek rota mesafesi, m) verilirse, sadeleştirilmiş geometrinin kısalığı oranla düzeltilir
+    constructor(coords, duration, distance) {
       this.c = coords; this.dur = duration; this.cum = [0];
       for (let i = 1; i < coords.length; i++) this.cum.push(this.cum[i - 1] + haversine(coords[i - 1][0], coords[i - 1][1], coords[i][0], coords[i][1]));
+      const geo = this.cum[this.cum.length - 1] || 0;
+      this.scale = distance > 0 && geo > 0 && distance / geo > 0.8 && distance / geo < 1.25 ? distance / geo : 1;
+      if (this.scale !== 1) this.cum = this.cum.map(v => v * this.scale);
       this.total = this.cum[this.cum.length - 1] || 0;
     }
     // Konumun rotaya en yakın noktası: rotadan sapma (m) ve kalan mesafe (m)
@@ -49,10 +53,18 @@
       }
       return { off: best, remaining: Math.max(0, this.total - along) };
     }
-    eta(remaining) { return this.total > 0 ? this.dur * remaining / this.total : 0; }
+  }
+  // Tahmini kalan süre (sn): planlanan ortalama hız ile, gidilen yolda ölçülen gerçek hareket hızının karışımı.
+  // Ölçüm yetersizse (<500 m / <60 sn) yalnızca plan; ölçüm arttıkça (3 km'de tam) gerçek hıza kayar. API çağrısı gerektirmez.
+  function estimateEta(o) {
+    const remaining = o.remaining, planDist = o.planDist, planDur = o.planDur, movedM = o.movedM || 0, movingS = o.movingS || 0;
+    if (!(remaining >= 0) || !(planDist > 0) || !(planDur > 0)) return NaN;
+    const vPlan = planDist / planDur, w = movedM >= 500 && movingS >= 60 ? Math.min(1, movedM / 3000) : 0;
+    const v = Math.min(40, Math.max(2, (1 - w) * vPlan + w * (movingS > 0 ? movedM / movingS : vPlan)));
+    return remaining / v;
   }
 
-  const Core = { haversine, fmtDist, fmtClock, fmtEta, RouteTracker };
+  const Core = { haversine, fmtDist, fmtClock, fmtEta, RouteTracker, estimateEta };
   if (typeof module !== 'undefined' && module.exports) module.exports = Core;
   if (typeof window === 'undefined') return;
 
@@ -119,9 +131,12 @@
           <div class="mm-navinfo">
             <div class="mm-navto" id="mm-navto"></div>
             <div class="mm-navnums"><b id="mm-navrem">—</b><span id="mm-naveta"></span></div>
-            <div class="mm-navnote" id="mm-navnote">Araç rotası · motosiklet için optimize değil</div>
+            <div class="mm-navnote" id="mm-navnote"></div>
           </div>
-          <button type="button" class="mm-navstop" id="mm-navstop">Durdur</button>
+          <div class="mm-nbtns">
+            <button type="button" class="mm-nb" id="mm-newdest">Yeni hedef</button>
+            <button type="button" class="mm-nb stop" id="mm-navstop">Bitir</button>
+          </div>
         </div>
       </div>
       <div class="mm-results" id="mm-results" hidden></div>
@@ -153,7 +168,15 @@
           <button type="button" class="mm-x" id="mm-dclear" aria-label="Hedefi kaldır">${ICON.close}</button>
         </div>
         <div class="mm-dline" id="mm-dline"></div>
-        <button type="button" class="mm-navgo" id="mm-navgo">${ICON.nav}<span>Navigasyonu başlat</span></button>
+        <div class="mm-rinfo" id="mm-rinfo" hidden>
+          <div class="mm-rnums"><b id="mm-rdist">—</b><span id="mm-reta"></span></div>
+          <div class="mm-rlabel" id="mm-rlabel"></div>
+        </div>
+        <div class="mm-chips" id="mm-chips" hidden></div>
+        <div class="mm-dbtns">
+          <button type="button" class="mm-navgo" id="mm-navgo">${ICON.nav}<span>Rota oluştur</span></button>
+          <button type="button" class="mm-rcancel" id="mm-rcancel" aria-label="Rotayı iptal et" hidden>${ICON.close}</button>
+        </div>
         <p class="mm-dnote" id="mm-dnote" hidden></p>
       </div>
       <div class="mm-panel" id="mm-panel">
@@ -208,7 +231,7 @@
       const L = window.L;
       S.map = L.map(el.map, { zoomControl: false, attributionControl: false, worldCopyJump: true, maxZoom: cfg.tileMax || 19 }).setView([39, 35], 5);   // karşılama görünümü (Türkiye); konum işareti değil
       L.tileLayer(cfg.tileUrl, { maxZoom: cfg.tileMax || 19, maxNativeZoom: cfg.tileMax || 19 }).addTo(S.map);
-      el.attr.innerHTML = cfg.tileAttr || '';
+      el.attr.innerHTML = (cfg.tileAttr || '') + (cfg.route && cfg.route.attr ? ' · ' + cfg.route.attr : '');
       S.riders = L.layerGroup().addTo(S.map);
       S.map.on('dragstart', () => { S.follow = false; paintLocate(); });
       el.load.hidden = true;
@@ -269,7 +292,7 @@
       paintLocate();
       if (rideActive()) { recordFix(f); paintRide(); }
       if (S.nav) updateNav(f);
-      if (S.dest) paintDest();
+      if (S.dest && !S.route) $('mm-dline').textContent = destDistText();
     }
     function flyToMe() {
       if (!S.ready) return;
@@ -311,7 +334,7 @@
         if (!r.ok) throw new Error(j.error || 'Arama başarısız.');
         const list = j.results || [];
         if (!list.length) return showResults('<div class="mm-rmsg">Sonuç bulunamadı. Daha açık yazmayı dene.</div>');
-        showResults(list.map((x, i) => `<button type="button" class="mm-ritem" data-i="${i}"><b>${esc(x.title)}</b><span>${esc(x.subtitle)}</span></button>`).join(''));
+        showResults(list.map((x, i) => `<button type="button" class="mm-ritem" data-i="${i}"><b>${esc(x.title)}${S.me ? `<em>${fmtDist(haversine(S.me.lat, S.me.lon, x.lat, x.lon))}</em>` : ''}</b><span>${esc(x.subtitle)}</span></button>`).join(''));
         el.results._list = list;
       } catch (err) { showResults(`<div class="mm-rmsg err">${esc(err.message || 'Arama başarısız.')}</div>`); }
       finally { el.go.disabled = false; el.go.textContent = 'Ara'; }
@@ -323,98 +346,168 @@
     });
     el.q.addEventListener('keydown', e => { if (e.key === 'Escape') { showResults(''); el.q.blur(); } });
 
-    /* ---------- Hedef ---------- */
+    /* ---------- Hedef, rota ve navigasyon ----------
+       Akış: hedef seç (API çağrısı YOK) → "Rota oluştur" (1 çağrı) → önizleme (mesafe, süre, varış) → "Navigasyonu başlat" (çağrı YOK)
+       → konum değiştikçe kalan mesafe/süre yerelde hesaplanır; yalnızca rotadan sapınca (ve sınırlı sıklıkta) yeni rota istenir. */
+    const AVOID_TXT = { highways: 'Otoyoldan kaçın', tolls: 'Ücretli yoldan kaçın', ferries: 'Feribotsuz' };
+    const rcfg = () => (S.cfg && S.cfg.route) || null;
+    const routingOn = () => !!(S.cfg && S.cfg.routing && rcfg());
+    const hhmm = sec => new Date(Date.now() + sec * 1000).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    Object.assign(S, { avoid: new Set((store.get('mm_avoid', '') || '').split(',').filter(Boolean)), route: null, routeLines: [], routeBusy: false, routeMsg: '', routeTimer: 0, reqId: 0, lastReq: { key: '', t: 0 } });
+
     function setDest(x) {
-      if (S.nav) stopNav(true);
-      clearRoute();
+      dropRoute();
       S.dest = { lat: x.lat, lon: x.lon, title: x.title, subtitle: x.subtitle };
       if (S.destMarker) S.destMarker.remove();
       S.destMarker = window.L.marker([x.lat, x.lon], { keyboard: false, icon: window.L.divIcon({ className: 'mm-icon', iconSize: [32, 40], iconAnchor: [16, 38], html: PIN }) }).addTo(S.map);
       S.follow = false; paintLocate();
       el.dest.hidden = false; paintDest();
-      const pad = { paddingTopLeft: [40, 110], paddingBottomRight: [70, 230], maxZoom: 16 };
+      const pad = { paddingTopLeft: [40, 110], paddingBottomRight: [70, 260], maxZoom: 16 };
       if (S.me) S.map.fitBounds([[S.me.lat, S.me.lon], [x.lat, x.lon]], pad); else S.map.setView([x.lat, x.lon], 14);
     }
     function clearDest() {
-      if (S.nav) stopNav(true);
-      clearRoute();
+      dropRoute();
       if (S.destMarker) { S.destMarker.remove(); S.destMarker = null; }
       S.dest = null; el.dest.hidden = true;
     }
+    function destDistText() { return S.me && S.dest ? 'Kuş uçuşu: ' + fmtDist(haversine(S.me.lat, S.me.lon, S.dest.lat, S.dest.lon)) + ' (yol mesafesi değildir)' : 'Mesafe için konumun bekleniyor…'; }
     function paintDest() {
-      const d = S.dest; if (!d) return;
+      const d = S.dest, r = S.route; if (!d) return;
+      const on = routingOn(), opts = on ? (rcfg().avoid || []) : [];
       $('mm-dtitle').textContent = d.title || 'Seçilen konum';
-      $('mm-dsub').textContent = d.subtitle || '';
-      $('mm-dline').textContent = S.me ? 'Kuş uçuşu: ' + fmtDist(haversine(S.me.lat, S.me.lon, d.lat, d.lon)) + ' (yol mesafesi değildir)' : 'Mesafe için konumun bekleniyor…';
-      const go = $('mm-navgo'), note = $('mm-dnote');
-      go.disabled = !S.cfg.routing;
-      note.hidden = S.cfg.routing; note.textContent = 'Rota hesaplama bu sunucuda henüz etkin değil; şimdilik yalnızca hedef gösterilir.';
+      $('mm-dsub').textContent = d.subtitle || ''; $('mm-dsub').hidden = !!r;
+      $('mm-dline').hidden = !!r; $('mm-dline').textContent = destDistText();
+      $('mm-rinfo').hidden = !r;
+      if (r) {
+        $('mm-rdist').textContent = fmtDist(r.distance);
+        $('mm-reta').textContent = '≈ ' + fmtEta(r.duration) + ' · Varış ' + hhmm(r.duration);
+        $('mm-rlabel').textContent = r.label + (r.toll === true ? ' · ücretli yol içerir' : '') + (r.ferry === true ? ' · feribot içerir' : '') + ' · trafiksiz tahmin';
+      }
+      const ch = $('mm-chips'); ch.hidden = !opts.length;
+      ch.innerHTML = opts.map(o => `<button type="button" class="mm-chip2" data-av="${o}" aria-pressed="${S.avoid.has(o)}">${AVOID_TXT[o] || o}</button>`).join('');
+      const go = $('mm-navgo'); go.disabled = !on || S.routeBusy;
+      go.querySelector('span').textContent = S.routeBusy ? 'Rota hesaplanıyor…' : r ? 'Navigasyonu başlat' : 'Rota oluştur';
+      $('mm-rcancel').hidden = !r;
+      const note = $('mm-dnote');
+      note.hidden = on && !S.routeMsg;
+      note.classList.toggle('err', !!S.routeMsg);
+      note.textContent = S.routeMsg || (on ? '' : 'Rota hesaplama bu sunucuda henüz etkin değil; şimdilik yalnızca hedef gösterilir.');
     }
 
-    /* ---------- Rota / navigasyon ---------- */
-    function clearRoute() { S.routeLines.forEach(l => l.remove()); S.routeLines = []; }
+    function clearRouteLayers() { S.routeLines.forEach(l => l.remove()); S.routeLines = []; }
     function drawRoute(coords) {
-      clearRoute();
+      clearRouteLayers();
       const L = window.L;
-      S.routeLines = [L.polyline(coords, { color: '#031420', weight: 11, opacity: 0.75, interactive: false }).addTo(S.map),
-                      L.polyline(coords, { color: '#EA8621', weight: 6, opacity: 1, interactive: false }).addTo(S.map)];
+      S.routeLines = [L.polyline(coords, { color: '#031420', weight: 12, opacity: 0.8, lineCap: 'round', interactive: false }).addTo(S.map),
+                      L.polyline(coords, { color: '#EA8621', weight: 7, opacity: 1, lineCap: 'round', interactive: false }).addTo(S.map)];
     }
-    async function fetchRoute(from, to) {
-      const p = new URLSearchParams({ from: from.lat.toFixed(6) + ',' + from.lon.toFixed(6), to: to.lat.toFixed(6) + ',' + to.lon.toFixed(6) });
-      const r = await fetch('/api/route?' + p, { credentials: 'same-origin' });
-      const j = await r.json().catch(() => ({}));
-      if (r.status === 503) { S.cfg.routing = false; paintDest(); throw new Error('Rota servisi bu sunucuda etkin değil.'); }
-      if (!r.ok || !Array.isArray(j.coords) || j.coords.length < 2) throw new Error(j.error || 'Rota alınamadı.');
-      return j;
-    }
-    $('mm-navgo').addEventListener('click', async () => {
-      if (!S.dest || !S.cfg.routing) return;
-      if (!S.me) return toast('Önce konumun bulunmalı. GPS bekleniyor…');
-      const b = $('mm-navgo'); b.disabled = true; b.querySelector('span').textContent = 'Rota hesaplanıyor…';
-      try {
-        const j = await fetchRoute(S.me, S.dest);
-        drawRoute(j.coords);
-        S.nav = { tracker: new RouteTracker(j.coords, j.duration), offSince: 0, lastReroute: Date.now(), busy: false };
-        el.dest.hidden = true; $('mm-form').hidden = true; el.navbar.hidden = false;
-        $('mm-navto').textContent = S.dest.title || 'Hedef';
-        S.follow = true; paintLocate();
-        S.map.setView([S.me.lat, S.me.lon], 16);
-        updateNav(S.me); measureHead();
-        startWatch();
-      } catch (err) { toast(err.message || 'Rota alınamadı.', 6000); }
-      finally { b.disabled = !S.cfg.routing; b.querySelector('span').textContent = 'Navigasyonu başlat'; }
-    });
-    function updateNav(f) {
-      const n = S.nav; if (!n) return;
-      const p = n.tracker.progress(f.lat, f.lon);
-      $('mm-navrem').textContent = fmtDist(p.remaining);
-      $('mm-naveta').textContent = '≈ ' + fmtEta(n.tracker.eta(p.remaining)) + ' (araç süresiyle)';
-      if (p.remaining < 40 && n.tracker.total > 100) { toast('Hedefe ulaştın.', 6000); return stopNav(true, true); }
-      const now = Date.now();
-      if (p.off > 100) {
-        n.offSince = n.offSince || now;
-        if (!n.busy && now - n.offSince > 8000 && now - n.lastReroute > 20000) reroute(f);
-      } else n.offSince = 0;
-    }
-    async function reroute(f) {
-      const n = S.nav; if (!n || !S.dest) return;
-      n.busy = true; n.lastReroute = Date.now(); $('mm-navnote').textContent = 'Rota yeniden hesaplanıyor…';
-      try {
-        const j = await fetchRoute(f, S.dest);
-        if (S.nav !== n) return;
-        drawRoute(j.coords); n.tracker = new RouteTracker(j.coords, j.duration); n.offSince = 0;
-      } catch (err) { toast(err.message || 'Rota yenilenemedi.', 5000); }
-      finally { n.busy = false; $('mm-navnote').textContent = 'Araç rotası · motosiklet için optimize değil'; }
-    }
-    function stopNav(silent, arrived) {
-      if (!S.nav && !arrived) return;
-      S.nav = null; clearRoute();
-      el.navbar.hidden = true; $('mm-form').hidden = false; measureHead();
-      if (arrived) clearDest(); else if (S.dest && !silent) { el.dest.hidden = false; paintDest(); }
+    // Rotayı, navigasyonu ve bekleyen istekleri bırak (hedef kalır)
+    function dropRoute() {
+      clearTimeout(S.routeTimer); S.reqId++; S.routeBusy = false; S.routeMsg = '';
+      clearRouteLayers(); S.route = null;
+      if (S.nav) { S.nav = null; el.navbar.hidden = true; }
+      $('mm-form').hidden = false; measureHead();
       if (!S.active && !rideActive()) stopWatch();
     }
-    $('mm-navstop').addEventListener('click', () => stopNav(false));
+
+    // Tek yetkili rota isteği: gereksiz çağrıları burada engelliyoruz
+    async function requestRoute(auto, from) {
+      if (!routingOn() || !S.dest) return null;
+      from = from || S.me;
+      if (!from) { if (!auto) throw new Error('Önce konumun bulunmalı. GPS bekleniyor…'); return null; }
+      if (navigator.onLine === false) { if (!auto) throw new Error('Çevrimdışısın; rota hesaplanamıyor.'); return null; }
+      const avoid = (rcfg().avoid || []).filter(x => S.avoid.has(x));
+      const key = [from.lat.toFixed(4), from.lon.toFixed(4), S.dest.lat.toFixed(4), S.dest.lon.toFixed(4), avoid.join(',')].join('|');
+      if (!auto && S.route && S.lastReq.key === key && Date.now() - S.lastReq.t < 30000) return S.route;   // aynı istek 30 sn içinde: yeniden sorma
+      if (S.routeBusy) return null;
+      const id = ++S.reqId, dest = S.dest; S.routeBusy = true; S.routeMsg = ''; if (!auto) paintDest();
+      try {
+        const p = new URLSearchParams({ from: from.lat.toFixed(6) + ',' + from.lon.toFixed(6), to: dest.lat.toFixed(6) + ',' + dest.lon.toFixed(6) });
+        if (avoid.length) p.set('avoid', avoid.join(','));
+        const r = await fetch('/api/route?' + p, { credentials: 'same-origin' });
+        const j = await r.json().catch(() => ({}));
+        if (id !== S.reqId || S.dest !== dest) return null;           // bu arada hedef değişti / rota iptal edildi: yanıtı yok say
+        if (r.status === 503) { S.cfg.routing = false; throw new Error('Rota servisi bu sunucuda etkin değil.'); }
+        if (r.status === 401) throw new Error('Oturum süresi dolmuş. Sayfayı yenile.');
+        if (!r.ok || !Array.isArray(j.coords) || j.coords.length < 2) throw new Error(j.error || 'Rota alınamadı.');
+        S.lastReq = { key, t: Date.now() };
+        S.route = { provider: j.provider, profile: j.profile, label: j.label, distance: j.distance, duration: j.duration, toll: j.toll, ferry: j.ferry,
+          avoid: j.avoid || [], coords: j.coords, tracker: new RouteTracker(j.coords, j.duration, j.distance) };
+        drawRoute(j.coords);
+        return S.route;
+      } finally { if (id === S.reqId) S.routeBusy = false; }
+    }
+    async function previewRoute() {
+      try {
+        const r = await requestRoute(false);
+        if (r) S.map.fitBounds(r.coords, { paddingTopLeft: [40, 110], paddingBottomRight: [70, 300], maxZoom: 17 });
+      } catch (err) { S.routeMsg = err.message || 'Rota alınamadı.'; clearRouteLayers(); S.route = null; }
+      paintDest();
+    }
+    $('mm-navgo').addEventListener('click', async () => {
+      if (!S.dest || !routingOn() || S.routeBusy) return;
+      if (!S.route) return previewRoute();
+      // Önizlemeden bu yana rotadan uzaklaştıysa başlamadan önce yeni rota al
+      const pr = S.me && S.route.tracker.progress(S.me.lat, S.me.lon);
+      if (pr && pr.off > 150) { S.route = null; await previewRoute(); if (!S.route) return; }
+      startNav();
+    });
+    $('mm-rcancel').addEventListener('click', () => { dropRoute(); paintDest(); });
     $('mm-dclear').addEventListener('click', clearDest);
+    $('mm-chips').addEventListener('click', e => {
+      const b = e.target.closest('[data-av]'); if (!b) return;
+      const id = b.dataset.av; if (S.avoid.has(id)) S.avoid.delete(id); else S.avoid.add(id);
+      store.set('mm_avoid', [...S.avoid].join(',')); paintDest();
+      if (S.route) { clearTimeout(S.routeTimer); S.routeTimer = setTimeout(previewRoute, 700); }   // art arda dokunuşlar tek istek olur; nihai tercih aynıysa hiç istek atılmaz
+    });
+
+    function setNote(t) { $('mm-navnote').textContent = t || (S.route ? S.route.label : ''); }
+    function startNav() {
+      const r = S.route; if (!r || S.nav) return;
+      S.nav = { offSince: 0, lastReroute: Date.now(), backoff: 30000, reroutes: 0, busy: false, prev: null, movedM: 0, movingS: 0 };
+      el.dest.hidden = true; el.navbar.hidden = false; $('mm-form').hidden = true;
+      $('mm-navto').textContent = S.dest.title || 'Hedef'; setNote('');
+      S.follow = true; paintLocate();
+      if (S.me) S.map.setView([S.me.lat, S.me.lon], Math.max(S.map.getZoom(), 16));
+      startWatch(); measureHead();
+      if (S.me) updateNav(S.me);
+    }
+    function updateNav(f) {
+      const n = S.nav, r = S.route; if (!n || !r) return;
+      if (f.acc <= 50) {                                               // gerçek hareket hızını ETA için biriktir
+        if (n.prev) {
+          const dt = (f.t - n.prev.t) / 1000;
+          if (dt > 0 && dt <= 30) { const d = haversine(n.prev.lat, n.prev.lon, f.lat, f.lon), sp = f.speed != null ? f.speed : d / dt; if (sp >= 1) { n.movedM += d; n.movingS += dt; } }
+        }
+        n.prev = f;
+      }
+      const p = r.tracker.progress(f.lat, f.lon);
+      const eta = estimateEta({ remaining: p.remaining, planDist: r.distance, planDur: r.duration, movedM: n.movedM, movingS: n.movingS });
+      $('mm-navrem').textContent = fmtDist(p.remaining);
+      $('mm-naveta').textContent = '≈ ' + fmtEta(eta) + ' · Varış ' + hhmm(eta);
+      if (p.remaining < Math.max(40, f.acc * 1.5) && r.distance > 100) { toast('Hedefe ulaştın.', 6000); return clearDest(); }
+      if (f.acc > 50) return;                                          // zayıf konumla sapma kararı verme
+      const now = Date.now();
+      if (p.off > Math.max(80, f.acc * 2)) {
+        n.offSince = n.offSince || now;
+        if (navigator.onLine === false) setNote('Çevrimdışı: rota güncellenemiyor, eski rota gösteriliyor.');
+        else if (!n.busy && now - n.offSince > 10000 && now - n.lastReroute > n.backoff && n.reroutes < 12) reroute(f);
+      } else { n.offSince = 0; if (!n.busy) setNote(''); }
+    }
+    // Rotadan çıkınca: en geç 30 sn'de bir (hata olursa üstel bekleme), oturum başına en çok 12 kez
+    async function reroute(f) {
+      const n = S.nav; if (!n || !S.dest) return;
+      n.busy = true; n.lastReroute = Date.now(); n.reroutes++; setNote('Rotadan çıktın · yeni rota hesaplanıyor…');
+      try {
+        const route = await requestRoute(true, f);
+        if (S.nav === n) { if (route) { n.offSince = 0; n.backoff = 30000; setNote(''); } else { n.backoff = Math.min(n.backoff * 2, 300000); setNote('Rota yenilenemedi · eski rota gösteriliyor.'); } }
+      } catch { if (S.nav === n) { n.backoff = Math.min(n.backoff * 2, 300000); setNote('Rota yenilenemedi · eski rota gösteriliyor.'); } }
+      finally { if (S.nav === n) n.busy = false; }
+    }
+    $('mm-navstop').addEventListener('click', () => { dropRoute(); if (S.dest) { el.dest.hidden = false; paintDest(); } });   // Bitir: rota silinir, hedef kalır
+    $('mm-newdest').addEventListener('click', () => {                                                                           // Yeni hedef: rotayı bozmadan arama kutusunu aç
+      const f = $('mm-form'); f.hidden = !f.hidden; measureHead(); if (!f.hidden) el.q.focus();
+    });
 
     /* ---------- Sürüş kaydı: ölçüm = ride-core.js (Recorder), cihazda saklama + eşitleme = ride-store.js ---------- */
     const RC = () => window.RideCore, RS = () => window.RideStore;
